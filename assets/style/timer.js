@@ -32,6 +32,13 @@
 
   function readRawState() {
     try {
+      const sessionRaw = sessionStorage.getItem(STORAGE_KEY);
+      if (sessionRaw) {
+        return sessionRaw;
+      }
+    } catch (_) {}
+
+    try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         return raw;
@@ -61,6 +68,10 @@
   function writeState(state) {
     const raw = JSON.stringify(state);
     try {
+      sessionStorage.setItem(STORAGE_KEY, raw);
+    } catch (_) {}
+
+    try {
       localStorage.setItem(STORAGE_KEY, raw);
     } catch (_) {}
 
@@ -70,6 +81,10 @@
   }
 
   function clearState() {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch (_) {}
+
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (_) {}
@@ -115,14 +130,32 @@
   function ensureTimerNode() {
     let node = document.getElementById("gameTimer");
     if (node) {
+      applyTimerPlacement(node);
       return node;
     }
 
     node = document.createElement("aside");
     node.id = "gameTimer";
     node.innerHTML = '<div class="timer-mode">Geen timer actief</div><div class="timer-value">--:--</div>';
+    applyTimerPlacement(node);
     document.body.appendChild(node);
     return node;
+  }
+
+  function applyTimerPlacement(node) {
+    if (!node) {
+      return;
+    }
+    node.style.position = "fixed";
+    node.style.top = "14px";
+    node.style.left = "50%";
+    node.style.right = "auto";
+    node.style.transform = "translateX(-50%)";
+    node.style.zIndex = "9999";
+    node.style.display = "block";
+    node.style.visibility = "visible";
+    node.style.opacity = "1";
+    node.style.pointerEvents = "none";
   }
 
   function ensureLockOverlay() {
@@ -157,7 +190,9 @@
     const state = readState();
 
     if (!state) {
-      node.style.display = "none";
+      node.style.display = "block";
+      node.style.visibility = "visible";
+      node.style.opacity = "1";
       node.classList.remove("expired");
       modeNode.textContent = "Geen timer actief";
       valueNode.textContent = "--:--";
@@ -166,6 +201,8 @@
     }
 
     node.style.display = "block";
+    node.style.visibility = "visible";
+    node.style.opacity = "1";
     const left = remainingMs(state);
     modeNode.textContent = state.modeLabel + " (" + state.durationMinutes + " min)";
     valueNode.textContent = formatMs(left);
