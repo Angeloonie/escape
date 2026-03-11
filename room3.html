@@ -1,0 +1,1034 @@
+<!--
+PAGINA: Kamer 3 - Toverdranklokaal
+DOEL: Volgorde-puzzel met ingredienten die bij juiste mix het woord CONFRINGO vrijgeeft.
+ROL IN DE FLOW: Vanuit Grote Zaal; na oplossen terug met voortgang naar hub.
+PUZZELREGELS (indien van toepassing): - Maximaal 3 ingredienten; - Validatie: juiste volgorde blauw->geel->helder en helder pas als laatste; - Succes: emerald staat + result-overlay CONFRINGO + opslag progress; - Falen: fail-sequence met reset van ketel.
+EFFECTEN:
+- Animaties: ripple/bubbles, shake/dim/smoke bij fout, pulserende resultaatglow.
+- Geluid: mix.mp3 bij toevoegen, faal.mp3 bij fout, succes.mp3 bij juiste oplossing.
+- Visuele effecten: kleur- en gloedwissels van vloeistof en ketel.
+- Timers of dynamische veranderingen: sequentie-UI en vloeistofstatus per stap; globale timer-overlay via HPTimer.
+GEBRUIKTE MEDIA:
+- Afbeeldingen: assets/images/toverdranklokaal.jpeg.
+- Audio: assets/sounds/mix.mp3, assets/sounds/faal.mp3, assets/sounds/succes.mp3.
+- Video: geen.
+- Externe assets: assets/style/timer.css, assets/style/timer.js, assets/style/progress.js, assets/style/room-nav.js.
+BIJZONDERHEDEN:
+- Afhankelijkheden: window.HPProgress en window.HPRoomNav.
+- Globale state impact: schrijft hp_room_potion_word en synchroniseert URL-param r3.
+- Edge cases of technische aandachtspunten: meerdere expliciete faalsequenties behandelen misleidende mixcombinaties.
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toverdranklokaal</title>
+  <link rel="stylesheet" href="assets/style/timer.css" />
+  <style>
+    :root {
+      --gold: #d4b36a;
+      --deep-blue: #0c1324;
+      --ink: #0a0e16;
+      --mist: rgba(255, 255, 255, 0.12);
+      --glow: rgba(105, 255, 204, 0.55);
+      --danger: rgba(255, 120, 120, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: #0b0f16;
+      background-image: url("assets/images/toverdranklokaal.jpeg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: #eef2f7;
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .puzzle-shell {
+      width: min(1100px, 95vw);
+      background: rgba(8, 12, 20, 0.78);
+      border: 1px solid rgba(212, 179, 106, 0.4);
+      border-radius: 18px;
+      padding: clamp(18px, 3vw, 28px);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      position: relative;
+      overflow: hidden;
+      transform: scale(0.75);
+      transform-origin: top center;
+    }
+
+    .puzzle-shell.intro-only .narrative {
+      text-align: center;
+    }
+
+    .puzzle-shell.intro-only .narrative p {
+      max-width: 78ch;
+      margin: 0 auto;
+    }
+
+    .puzzle-shell.intro-only .narrative .start-btn {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .puzzle-grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.2fr) minmax(220px, 0.8fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel {
+      border-radius: 16px;
+      background: rgba(10, 15, 25, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 16px;
+    }
+
+    .narrative {
+      grid-column: 1 / -1;
+      position: relative;
+      border: 1px solid rgba(212, 179, 106, 0.35);
+    }
+
+    .narrative h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2.2vw, 2rem);
+      color: #f8edd0;
+    }
+
+    .narrative p {
+      margin: 0;
+      line-height: 1.6;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+      color: #e8e1cf;
+    }
+
+    .ingredient-panel h2,
+    .cauldron-panel h2,
+    .feedback-panel h2 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      color: #f4e8cc;
+      letter-spacing: 0.02em;
+    }
+
+    .puzzle-hidden {
+      display: none !important;
+    }
+
+    .narrative .reset-btn {
+      margin-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .start-btn {
+      margin-top: 18px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      background: rgba(212, 179, 106, 0.15);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .start-btn:hover {
+      background: rgba(212, 179, 106, 0.25);
+    }
+
+    .start-btn[hidden] {
+      display: none !important;
+    }
+
+    .corner-link {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 5;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      background: #d4b36a;
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+
+    .corner-link:hover {
+      filter: brightness(1.06);
+    }
+    .success-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .success-return {
+      position: static;
+      top: auto;
+      left: auto;
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      background: #d4b36a;
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      line-height: 1.2;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+    .ingredients {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ingredient {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #f2ead7;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .ingredient:hover,
+    .ingredient:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 0 14px rgba(212, 179, 106, 0.35);
+    }
+
+    .ingredient-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.4) inset;
+    }
+
+    .ingredient-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .ingredient-name {
+      color: #f6efdd;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .ingredient-sub {
+      font-size: 0.85rem;
+      color: #ddd4bf;
+      text-align: left;
+    }
+
+    .cauldron-panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cauldron-wrap {
+      position: relative;
+      width: min(320px, 80vw);
+      aspect-ratio: 1 / 1.1;
+    }
+
+    .cauldron {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 70%, #141925 20%, #0a0c12 68%, #04060a 100%);
+      border-radius: 45% 45% 40% 40%;
+      border: 2px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 30px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .liquid {
+      position: absolute;
+      left: 15%;
+      right: 15%;
+      bottom: 22%;
+      height: 32%;
+      border-radius: 50% 50% 40% 40%;
+      background: rgba(30, 40, 60, 0.65);
+      box-shadow: 0 0 18px rgba(120, 160, 220, 0.2), inset 0 0 12px rgba(0, 0, 0, 0.6);
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+      overflow: hidden;
+    }
+
+    .liquid::after {
+      content: "";
+      position: absolute;
+      inset: -20% 0 0 0;
+      background: radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.15), transparent 60%);
+      animation: ripple 3s ease-in-out infinite;
+    }
+
+    .bubbles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .bubbles span {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      animation: bubble 3s ease-in-out infinite;
+    }
+
+    .bubbles span:nth-child(1) { left: 20%; bottom: 10%; animation-delay: 0s; }
+    .bubbles span:nth-child(2) { left: 50%; bottom: 12%; animation-delay: 0.8s; }
+    .bubbles span:nth-child(3) { left: 70%; bottom: 8%; animation-delay: 1.6s; }
+
+    .cauldron-rim {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 32%;
+      height: 12%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .cauldron-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: 50% 50% 40% 40%;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      box-shadow: 0 0 35px var(--glow);
+    }
+
+    .sequence {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      min-height: 32px;
+    }
+
+    .sequence-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.85rem;
+    }
+
+    .feedback-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .feedback-area {
+      min-height: 90px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.95rem;
+    }
+
+    .reset-btn {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(212, 179, 106, 0.1);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .reset-btn:hover {
+      background: rgba(212, 179, 106, 0.2);
+    }
+
+    .result-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 10, 16, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .result-overlay.is-visible {
+      display: flex;
+    }
+
+    .result-box {
+      padding: 48px 60px;
+      border-radius: 32px;
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      background: rgba(20, 66, 42, 0.82);
+      color: #f8edd0;
+      font-size: clamp(2.2rem, 4vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      animation: answer-pulse 2.6s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .magic-sparkle {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0;
+    }
+
+    .magic-sparkle.is-active {
+      opacity: 1;
+    }
+
+    .magic-star {
+      position: absolute;
+      left: 0;
+      top: 0;
+      line-height: 1;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+      mix-blend-mode: screen;
+      color: var(--star-color, #fff4b8);
+      font-size: var(--star-size, 20px);
+      text-shadow:
+        0 0 6px rgba(255, 240, 180, 0.9),
+        0 0 16px rgba(140, 220, 255, 0.5);
+      animation: sparkle-star 3s ease-out forwards;
+      animation-delay: var(--star-delay, 0ms);
+    }
+
+    @keyframes sparkle-star {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+      }
+      18% {
+        opacity: 0.95;
+      }
+      55% {
+        opacity: 0.7;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--star-drift-x, 0px)), calc(-50% + var(--star-drift-y, -22px))) scale(1.15) rotate(var(--star-rotate, 80deg));
+      }
+    }
+
+    .shake {
+      animation: shake 0.5s ease;
+    }
+
+    .dim {
+      animation: dim 0.8s ease;
+    }
+
+    .smoke {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(190, 190, 190, 0.3), transparent 60%);
+      opacity: 0;
+      pointer-events: none;
+      animation: smoke 1s ease;
+    }
+
+    @keyframes ripple {
+      0% { transform: translateY(0); opacity: 0.6; }
+      50% { transform: translateY(6px); opacity: 0.9; }
+      100% { transform: translateY(0); opacity: 0.6; }
+    }
+
+    @keyframes bubble {
+      0% { transform: translateY(0); opacity: 0.3; }
+      50% { transform: translateY(-12px); opacity: 0.7; }
+      100% { transform: translateY(0); opacity: 0.3; }
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      50% { transform: translateX(6px); }
+      75% { transform: translateX(-4px); }
+      100% { transform: translateX(0); }
+    }
+
+    @keyframes dim {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(0.6); }
+      100% { filter: brightness(1); }
+    }
+
+    @keyframes smoke {
+      0% { opacity: 0; }
+      40% { opacity: 0.65; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes answer-pulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 28px rgba(212, 179, 106, 0.24), 0 0 52px rgba(212, 179, 106, 0.12), 0 0 0 rgba(212, 179, 106, 0);
+      }
+      50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 60px rgba(212, 179, 106, 0.5), 0 0 104px rgba(212, 179, 106, 0.28), 0 0 156px rgba(212, 179, 106, 0.14);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 28px rgba(212, 179, 106, 0.24), 0 0 52px rgba(212, 179, 106, 0.12), 0 0 0 rgba(212, 179, 106, 0);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .puzzle-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cauldron-panel {
+        order: 2;
+      }
+
+      .feedback-panel {
+        order: 3;
+      }
+
+      .ingredient-panel {
+        order: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="corner-link great-hall-link" href="grotezaal.html">Terug naar de Grote Zaal</a>
+  <div class="puzzle-shell intro-only" id="puzzleShell">
+    <div class="puzzle-grid">
+      <section class="panel narrative" id="narrativeSection">
+        <h1>Toverdranklokaal</h1>
+        <p>Wanneer het maanlicht als koud glas over het toverdranklokaal kruipt, lijken de kolven te ademen: rood als smeulende sintels, blauw als de nacht boven het Zwarte Meer, geel als oud kaarsvet dat aan perkament kleeft. Toch waarschuwt het receptenboek: "Niet elke volgorde wekt magie; wat juist lijkt, is in het halfdonker vaak misleiding."
+<br /><br />
+Zoek geen vuur, maar een woud dat leeft in stilte: het groen dat ontstaat waar het mysterie van de nacht en glimmend oud gewicht elkaar raken -eerst de nacht, dan het licht. Pas wanneer de drank helder ademt, toont het kasteel zijn toestemming.
+ </p>
+        <button class="start-btn" id="startPuzzle" type="button">Start de ketel</button>
+      </section>
+
+      <section class="panel ingredient-panel puzzle-hidden" id="ingredientPanel" hidden>
+        <h2>Ingredienten</h2>
+        <div class="ingredients" role="list">
+          <button class="ingredient" data-ingredient="blauw" type="button" role="listitem">
+            <span class="ingredient-swatch" style="background:#335dff"></span>
+            <span class="ingredient-info">
+              <span class="ingredient-name">Blauw</span>
+              <span class="ingredient-sub">Maaninkt</span>
+            </span>
+          </button>
+          <button class="ingredient" data-ingredient="rood" type="button" role="listitem">
+            <span class="ingredient-swatch" style="background:#c23b3b"></span>
+            <span class="ingredient-info">
+              <span class="ingredient-name">Rood</span>
+              <span class="ingredient-sub">Sinteltinctuur</span>
+            </span>
+          </button>
+          <button class="ingredient" data-ingredient="paars" type="button" role="listitem">
+            <span class="ingredient-swatch" style="background:#6e3fa8"></span>
+            <span class="ingredient-info">
+              <span class="ingredient-name">Paars</span>
+              <span class="ingredient-sub">Violetas</span>
+            </span>
+          </button>
+          <button class="ingredient" data-ingredient="geel" type="button" role="listitem">
+            <span class="ingredient-swatch" style="background:#f0c14b"></span>
+            <span class="ingredient-info">
+              <span class="ingredient-name">Geel</span>
+              <span class="ingredient-sub">Oudgoudhars</span>
+            </span>
+          </button>
+          <button class="ingredient" data-ingredient="groen" type="button" role="listitem">
+            <span class="ingredient-swatch" style="background:#2d8f56"></span>
+            <span class="ingredient-info">
+              <span class="ingredient-name">Groen</span>
+              <span class="ingredient-sub">Slangensap</span>
+            </span>
+          </button>
+          <button class="ingredient" data-ingredient="helder" type="button" role="listitem">
+            <span class="ingredient-swatch" style="background:#c7ecff"></span>
+            <span class="ingredient-info">
+              <span class="ingredient-name">Helder</span>
+              <span class="ingredient-sub">Etherhelder</span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel cauldron-panel puzzle-hidden" id="cauldron" hidden>
+        <h2>Ketel</h2>
+        <div class="cauldron-wrap">
+          <div class="cauldron"></div>
+          <div class="liquid" id="liquid">
+            <div class="bubbles">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="cauldron-rim"></div>
+          <div class="cauldron-glow" id="cauldronGlow"></div>
+        </div>
+        <div class="sequence" id="sequence"></div>
+      </section>
+
+      <section class="panel feedback-panel puzzle-hidden" id="feedbackArea" hidden>
+        <h2>Feedback</h2>
+        <div class="feedback-area" id="feedbackText">
+          Voeg tot drie ingredienten toe. De volgorde bepaalt het ritueel.
+        </div>
+        <button class="reset-btn" id="resetBtn" type="button">Reset ketel</button>
+      </section>
+    </div>
+  </div>
+  <div class="result-overlay" id="resultOverlay">
+    <div class="success-stack"><div class="result-box">CONFRINGO</div><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div>
+  </div>
+
+  <audio id="soundBubble" preload="auto">
+    <source src="assets/sounds/mix.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="soundFail" preload="auto">
+    <source src="assets/sounds/faal.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="soundSuccess" preload="auto">
+    <source src="assets/sounds/succes.mp3" type="audio/mpeg" />
+  </audio>
+  <div class="magic-sparkle" id="magicSparkle" aria-hidden="true"></div>
+
+  <script src="assets/style/audio-fade.js"></script>
+  <script src="assets/style/timer.js"></script>
+  <script src="assets/style/progress.js"></script>
+  <script src="assets/style/room-nav.js"></script>
+  <script>
+    const STORAGE_KEY = "hp_room_potion_word";
+    const ROOM3_PARAM = "r3";
+    const greatHallLinks = [...document.querySelectorAll(".great-hall-link")];
+
+    function syncGreatHallLink(extraValue = null) {
+      greatHallLinks.forEach((link) => window.HPRoomNav.syncGreatHallLink(link, ROOM3_PARAM, extraValue));
+    }
+
+    function updateOwnUrlParam(value) {
+      window.HPRoomNav.updateOwnUrlParam(ROOM3_PARAM, value);
+    }
+
+    function setProgress(key, value) {
+      window.HPProgress.set(key, value);
+      if (key === STORAGE_KEY) {
+        updateOwnUrlParam(value);
+        syncGreatHallLink(value);
+      }
+    }
+    syncGreatHallLink();
+
+    const SOLUTION_WORD = "CONFRINGO";
+    const MAX_STEPS = 3;
+    const CORRECT_SEQUENCE = ["blauw", "geel", "helder"];
+    const liquid = document.getElementById("liquid");
+    const cauldronGlow = document.getElementById("cauldronGlow");
+    const feedbackText = document.getElementById("feedbackText");
+    const sequenceEl = document.getElementById("sequence");
+    const resetBtn = document.getElementById("resetBtn");
+    const resultOverlay = document.getElementById("resultOverlay");
+    const magicSparkle = document.getElementById("magicSparkle");
+    const STAR_GLYPHS = ["✦", "✧", "★"];
+    const STAR_COLORS = ["#fff7c7", "#dff7ff", "#f6e2aa", "#d0ffe8"];
+    const ingredientButtons = document.querySelectorAll(".ingredient");
+    const startPuzzle = document.getElementById("startPuzzle");
+    const puzzleShell = document.getElementById("puzzleShell");
+    const ingredientPanel = document.getElementById("ingredientPanel");
+    const cauldronPanel = document.getElementById("cauldron");
+    const cauldronEl = cauldronPanel;
+    const feedbackPanel = document.getElementById("feedbackArea");
+    const soundBubble = document.getElementById("soundBubble");
+    const soundFail = document.getElementById("soundFail");
+    const soundSuccess = document.getElementById("soundSuccess");
+    const ingredientsList = document.querySelector(".ingredients");
+    let sequence = [];
+    let sparkleTimer = null;
+    const mixStates = {
+      blauw: {
+        color: "rgba(70, 105, 230, 0.7)",
+        glow: "rgba(90, 140, 255, 0.35)",
+        text: "De ketel vult zich met een koude, blauwe schijn.",
+      },
+      geel: {
+        color: "rgba(210, 168, 70, 0.72)",
+        glow: "rgba(255, 198, 90, 0.3)",
+        text: "Gouden damp kringelt langs de rand.",
+      },
+      rood: {
+        color: "rgba(170, 60, 60, 0.72)",
+        glow: "rgba(220, 90, 90, 0.3)",
+        text: "Een felle gloed dreigt te ontsnappen.",
+      },
+      paars: {
+        color: "rgba(110, 70, 170, 0.72)",
+        glow: "rgba(160, 110, 230, 0.3)",
+        text: "De vloeistof wordt zwaar en violet.",
+      },
+      groen: {
+        color: "rgba(60, 120, 80, 0.72)",
+        glow: "rgba(80, 180, 120, 0.3)",
+        text: "Een doffe groene schaduw vult de ketel.",
+      },
+      helder: {
+        color: "rgba(200, 230, 245, 0.65)",
+        glow: "rgba(200, 255, 240, 0.4)",
+        text: "Een glasheldere nevel daalt neer.",
+      },
+      emerald: {
+        color: "rgba(50, 180, 120, 0.8)",
+        glow: "rgba(80, 255, 190, 0.65)",
+        text: "De drank wordt smaragdgroen en ademt licht.",
+      },
+      teal: {
+        color: "rgba(70, 180, 190, 0.7)",
+        glow: "rgba(120, 220, 230, 0.35)",
+        text: "Een teal gloed dwarrelt weg. Het voelt onjuist.",
+      },
+      mist: {
+        color: "rgba(130, 150, 170, 0.45)",
+        glow: "rgba(180, 200, 220, 0.2)",
+        text: "De vloeistof blijft mistig en onstabiel.",
+      },
+      orange: {
+        color: "rgba(200, 120, 60, 0.7)",
+        glow: "rgba(240, 160, 90, 0.35)",
+        text: "Oranje licht flitst op, dan sterft het uit.",
+      },
+      indigo: {
+        color: "rgba(60, 70, 140, 0.7)",
+        glow: "rgba(110, 120, 200, 0.3)",
+        text: "Indigo schaduwen maken de ketel zwaar.",
+      },
+    };
+
+    function shuffle(list) {
+      const result = [...list];
+      for (let i = result.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+
+    function shuffleIngredients() {
+      const items = Array.from(ingredientsList.querySelectorAll(".ingredient"));
+      shuffle(items).forEach((item) => {
+        ingredientsList.appendChild(item);
+      });
+    }
+
+    function updateSequenceUI() {
+      sequenceEl.innerHTML = "";
+      sequence.forEach((item) => {
+        const pill = document.createElement("span");
+        pill.className = "sequence-pill";
+        pill.textContent = item;
+        sequenceEl.appendChild(pill);
+      });
+    }
+
+    function setLiquid(stateKey) {
+      const state = mixStates[stateKey];
+      liquid.style.background = state.color;
+      liquid.style.boxShadow = `0 0 18px ${state.glow}, inset 0 0 12px rgba(0,0,0,0.6)`;
+      cauldronGlow.style.boxShadow = `0 0 35px ${state.glow}`;
+      cauldronGlow.style.opacity = stateKey === "emerald" ? "1" : "0.35";
+      feedbackText.textContent = state.text;
+    }
+
+    function playSound(audioEl) {
+      if (!audioEl) {
+        return;
+      }
+      window.CinematicAudio.play(audioEl, { fadeInMs: 420, fadeOutMs: 680, endFadeMs: 760 });
+    }
+
+    function playMagicSparkle() {
+      if (!magicSparkle) {
+        return;
+      }
+      magicSparkle.innerHTML = "";
+      for (let i = 0; i < 54; i += 1) {
+        const star = document.createElement("span");
+        star.className = "magic-star";
+        star.textContent = STAR_GLYPHS[Math.floor(Math.random() * STAR_GLYPHS.length)];
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.setProperty("--star-size", `${8 + Math.random() * 92}px`);
+        star.style.setProperty("--star-delay", `${Math.random() * 560}ms`);
+        star.style.setProperty("--star-drift-x", `${-20 + Math.random() * 40}px`);
+        star.style.setProperty("--star-drift-y", `${-42 + Math.random() * 22}px`);
+        star.style.setProperty("--star-rotate", `${-140 + Math.random() * 280}deg`);
+        star.style.setProperty("--star-color", STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)]);
+        magicSparkle.appendChild(star);
+      }
+      magicSparkle.classList.remove("is-active");
+      void magicSparkle.offsetWidth;
+      magicSparkle.classList.add("is-active");
+      if (sparkleTimer) {
+        clearTimeout(sparkleTimer);
+      }
+      sparkleTimer = setTimeout(() => {
+        magicSparkle.classList.remove("is-active");
+        magicSparkle.innerHTML = "";
+      }, 3200);
+    }
+
+    [soundBubble, soundFail, soundSuccess].forEach((audioEl) => {
+      if (audioEl) {
+        audioEl.load();
+      }
+    });
+    window.CinematicAudio.register(soundBubble, {
+      volume: 0.78,
+      fadeInMs: 380,
+      fadeOutMs: 620,
+      endFadeMs: 720,
+    });
+    window.CinematicAudio.register(soundFail, {
+      volume: 0.88,
+      fadeInMs: 360,
+      fadeOutMs: 620,
+      endFadeMs: 720,
+    });
+    window.CinematicAudio.register(soundSuccess, {
+      volume: 0.92,
+      fadeInMs: 440,
+      fadeOutMs: 760,
+      endFadeMs: 840,
+    });
+    const primeAllAudio = () => {
+      window.CinematicAudio.prime(soundBubble);
+      window.CinematicAudio.prime(soundFail);
+      window.CinematicAudio.prime(soundSuccess);
+    };
+    document.addEventListener("pointerdown", primeAllAudio, { once: true });
+    document.addEventListener("keydown", primeAllAudio, { once: true });
+
+    function revealPuzzle() {
+      puzzleShell.classList.remove("intro-only");
+      startPuzzle.hidden = true;
+      startPuzzle.style.display = "none";
+      ingredientPanel.classList.remove("puzzle-hidden");
+      cauldronPanel.classList.remove("puzzle-hidden");
+      feedbackPanel.classList.remove("puzzle-hidden");
+      ingredientPanel.hidden = false;
+      cauldronPanel.hidden = false;
+      feedbackPanel.hidden = false;
+    }
+
+    function resetPotion(message = "Voeg tot drie ingredienten toe. De volgorde bepaalt het ritueel.") {
+      sequence = [];
+      updateSequenceUI();
+      liquid.style.background = "rgba(30, 40, 60, 0.65)";
+      liquid.style.boxShadow = "0 0 18px rgba(120, 160, 220, 0.2), inset 0 0 12px rgba(0,0,0,0.6)";
+      cauldronGlow.style.opacity = "0";
+      feedbackText.textContent = message;
+      resultOverlay.classList.remove("is-visible");
+    }
+
+    function failSequence(stateKey, message) {
+      playSound(soundFail);
+      setLiquid(stateKey);
+      feedbackText.textContent = message || mixStates[stateKey].text;
+      cauldronEl.classList.add("shake", "dim");
+
+      const smoke = document.createElement("div");
+      smoke.className = "smoke";
+      cauldronEl.appendChild(smoke);
+      setTimeout(() => {
+        cauldronEl.classList.remove("shake", "dim");
+        smoke.remove();
+        resetPotion("De ketel reset. Probeer opnieuw.");
+      }, 1200);
+    }
+    function checkSequence() {
+      if (sequence.length === 0) {
+        return;
+      }
+
+      const [first, second, third] = sequence;
+
+      if (sequence.length === 1) {
+        setLiquid(first);
+        return;
+      }
+
+      if (sequence.length === 2) {
+        const pairKey = `${first},${second}`;
+        const pairHandlers = {
+          "blauw,geel": () => {
+            setLiquid("mist");
+            feedbackText.textContent = "De kleuren mengen, maar blijven onstabiel.";
+          },
+          "geel,blauw": () => {
+            setLiquid("teal");
+            feedbackText.textContent = "De mix krijgt een teal schijn. Het voelt verkeerd.";
+          },
+          "rood,geel": () => failSequence("orange", "Rood en geel geven enkel een oranje vlam. De ketel sputtert.")
+        };
+
+        if (pairHandlers[pairKey]) {
+          pairHandlers[pairKey]();
+          return;
+        }
+        if (first === "groen") {
+          failSequence("groen", "De doffe groene kleur verstikt de magie.");
+          return;
+        }
+        setLiquid(second);
+        return;
+      }
+
+      if (sequence.length === 3) {
+        const sequenceKey = sequence.join(",");
+        const matchesCorrectSequence = sequence.every((step, idx) => step === CORRECT_SEQUENCE[idx]);
+
+        if (matchesCorrectSequence) {
+          setLiquid("emerald");
+          feedbackText.textContent = "De drank is smaragdgroen. Het kasteel stemt toe.";
+          playMagicSparkle();
+          resultOverlay.classList.add("is-visible");
+          setProgress(STORAGE_KEY, SOLUTION_WORD);
+          playSound(soundSuccess);
+          return;
+        }
+
+        const failureHandlers = {
+          "geel,blauw,helder": () => failSequence("teal", "Teal en koud. Dit is schijn, geen magie."),
+          "blauw,paars,helder": () => failSequence("indigo", "Indigo vult de ketel, maar niets ontwaakt.")
+        };
+        if (failureHandlers[sequenceKey]) {
+          failureHandlers[sequenceKey]();
+          return;
+        }
+
+        if (third === "helder" && !matchesCorrectSequence) {
+          failSequence("mist", "Helder werkt alleen als katalysator na de juiste menging.");
+          return;
+        }
+
+        failSequence("mist", "De volgorde klopt niet. De ketel reset.");
+      }
+    }
+    function addIngredient(ingredient) {
+      if (sequence.length >= MAX_STEPS) {
+        return;
+      }
+
+      if (ingredient === "helder" && sequence.length < 2) {
+        failSequence("mist", "Helder kan pas als laatste stap worden toegevoegd.");
+        return;
+      }
+
+      playSound(soundBubble);
+      sequence.push(ingredient);
+      updateSequenceUI();
+      checkSequence();
+    }
+
+    ingredientButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        addIngredient(button.dataset.ingredient);
+      });
+    });
+
+    startPuzzle.addEventListener("click", () => {
+      shuffleIngredients();
+      revealPuzzle();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      shuffleIngredients();
+      resetPotion();
+    });
+
+    resetPotion();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

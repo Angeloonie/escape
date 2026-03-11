@@ -1,0 +1,158 @@
+﻿<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Slaapzaal van Glas</title>
+<style>
+:root{--bg:#0b0f16;--panel:rgba(10,15,25,.82);--line:rgba(227,191,122,.28);--text:#eef2f7;--muted:#c7c1b1;--err:#ff9b9b;--ok:#7ff0c6;--shadow:0 22px 60px rgba(0,0,0,.52)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at top,#2a170d 0,#100a08 42%,#050404 100%);color:var(--text);font-family:"Cormorant Garamond","Times New Roman",serif}
+body{min-height:100vh;overflow:hidden}
+button,input{font:inherit}
+.corner-link{position:absolute;top:16px;left:16px;z-index:5;padding:8px 12px;border-radius:999px;border:0;background:#d4b36a;color:#1a1306;font-weight:700;text-decoration:none;font-size:.9rem;box-shadow:0 8px 22px rgba(0,0,0,.35)}
+.corner-link:hover{filter:brightness(1.06)}
+.success-panel{display:flex;flex-direction:column;align-items:center}
+.success-return{position:static;top:auto;left:auto;z-index:5;display:inline-flex;align-items:center;justify-content:center;margin-top:20px;padding:8px 12px;border-radius:999px;border:0;background:#d4b36a;color:#1a1306;font-weight:700;text-decoration:none;font-size:.9rem;line-height:1.2;box-shadow:0 8px 22px rgba(0,0,0,.35)}
+.intro-shell{position:fixed;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none}
+.intro-shell[hidden]{display:none}
+.puzzle-shell{position:relative;width:min(900px,92vw);margin:0 auto;background:rgba(8,12,20,.78);border:1px solid rgba(212,179,106,.35);border-radius:18px;padding:clamp(18px,3vw,28px);backdrop-filter:blur(6px);box-shadow:0 24px 80px rgba(0,0,0,.45);font-family:"Cormorant Garamond","Times New Roman",serif;transform:scale(.75);transform-origin:top center}
+.intro-shell .puzzle-shell{pointer-events:auto}
+.puzzle-shell.intro-only .puzzle-header{margin-bottom:0;text-align:center}
+.puzzle-shell.intro-only .puzzle-header p{max-width:76ch;margin:0 auto}
+.puzzle-header{border:1px solid rgba(212,179,106,.35);border-radius:16px;background:rgba(10,15,25,.82);padding:18px;margin-bottom:18px}
+.puzzle-header h1{margin:0 0 8px;font-size:clamp(1.5rem,2.4vw,2.2rem);color:#f7ead2}
+.puzzle-header p{margin:0;line-height:1.6;color:#e6ddc8}
+.start-btn{margin-top:16px;padding:10px 18px;border-radius:999px;border:1px solid rgba(212,179,106,.6);background:rgba(212,179,106,.15);color:#f6e6b6;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font:700 1rem/1 "Cormorant Garamond","Times New Roman",serif}
+.start-btn:hover{background:rgba(212,179,106,.25)}
+.hud[hidden]{display:none}
+.hud{position:fixed;top:16px;right:16px;z-index:4;display:block;pointer-events:none;transform:scale(.75);transform-origin:top right}
+.hud-panel{pointer-events:auto;width:min(533px,92vw);padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,.06);background:var(--panel);box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.hud-panel h1{margin:0 0 12px;font-size:1.2rem;letter-spacing:.02em;color:#f4e8cc}
+.hud-panel p,.status-line,.letters-line{margin:0;line-height:1.6;color:var(--muted);font-size:clamp(.95rem,1.3vw,1.05rem)}
+.letters-line{margin-top:10px;color:var(--muted);text-transform:none;font-weight:700}
+.hud-divider{height:1px;margin:12px 0;background:rgba(255,255,255,.06)}
+.screen{min-height:100vh;padding:0}
+.room-shell{position:relative;min-height:100vh;z-index:1;overflow:hidden}
+.room-scene{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;background:url("assets/images/slaapzaal.png?v=20260310") center/cover no-repeat;border:0;border-radius:0;box-shadow:none}
+.zone{position:absolute;z-index:2;border:1px solid transparent;background:transparent;border-radius:16px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;-webkit-tap-highlight-color:transparent}
+.zone:hover,.zone:focus-visible,.zone.active{outline:none;border-color:transparent;background:transparent;box-shadow:none}
+.room-scene.pre-start .zone{opacity:0;pointer-events:none}
+.zone:after{content:attr(data-label);position:absolute;left:50%;bottom:calc(100% + 10px);transform:translate(-50%,6px);padding:6px 10px;border-radius:999px;border:1px solid rgba(245,223,186,.18);background:rgba(10,8,7,.88);color:#f3dec0;font-size:.76rem;letter-spacing:.05em;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+.zone:hover:after,.zone:focus-visible:after{opacity:1;transform:translate(-50%,0)}
+.trunk:after{display:none}
+.final:after{display:none}
+.zone.done{border-color:transparent;box-shadow:none}
+.final,.final:hover,.final:focus-visible,.final.active{border-color:transparent;background:transparent;box-shadow:none}
+.window-zone{border-radius:26% 26% 9% 9%;overflow:hidden}
+.window-zone:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,238,176,.12),rgba(255,255,255,.02) 30%,rgba(255,209,118,.18) 70%,rgba(255,255,255,.04));opacity:0;transition:opacity .2s ease}
+.window-zone:hover:before,.window-zone:focus-visible:before,.window-zone.active:before{opacity:1}
+.window-letters{position:absolute;inset:10% 8% 8%;display:grid;grid-template-columns:repeat(6,1fr);gap:1.4%;pointer-events:none}
+.window-slot{position:relative;display:flex;align-items:center;justify-content:center;border-radius:14px 14px 18px 18px;overflow:hidden}
+.window-slot:before,.window-slot:after{content:none}
+.slot-letter{position:relative;z-index:1;font-size:clamp(1rem,2.3vw,2.2rem);font-weight:700;color:#fff1cb;text-shadow:0 0 18px rgba(255,221,151,.45);opacity:0;transform:translateY(8px) scale(.96);transition:opacity .2s ease,transform .2s ease}
+.window-slot.revealed .slot-letter,.window-zone.active .window-slot.peek .slot-letter,.window-zone:hover .window-slot.peek .slot-letter{opacity:1;transform:translateY(0) scale(1)}
+.sun-guide{position:absolute;left:6%;right:6%;top:24%;height:14%;opacity:0;pointer-events:none;transition:opacity .18s ease}
+.window-zone.active .sun-guide,.window-zone:hover .sun-guide{opacity:1}
+.sun-guide:before{content:"";position:absolute;inset:45% 8% auto 8%;height:2px;background:linear-gradient(90deg,rgba(255,223,150,.7),rgba(255,223,150,.15));box-shadow:0 0 18px rgba(255,215,131,.25)}
+.sun-guide:after{content:"";position:absolute;right:6%;top:calc(45% - 5px);width:12px;height:12px;border-top:2px solid rgba(255,223,150,.72);border-right:2px solid rgba(255,223,150,.72);transform:rotate(45deg)}
+.lock-glyph{position:absolute;left:50%;top:50%;width:28px;height:22px;transform:translate(-50%,-10%);border-radius:6px;border:2px solid rgba(249,225,181,.85);background:rgba(40,26,10,.55);box-shadow:0 0 12px rgba(246,201,112,.22);pointer-events:none}
+.lock-glyph:before{content:"";position:absolute;left:50%;bottom:100%;width:16px;height:14px;transform:translateX(-50%);border:2px solid rgba(249,225,181,.85);border-bottom:0;border-radius:12px 12px 0 0;box-sizing:border-box}
+.lock-glyph:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;transform:translate(-50%,-20%);border-radius:50%;background:rgba(249,225,181,.92);box-shadow:0 7px 0 0 rgba(249,225,181,.92)}
+.scene-footer{position:fixed;left:50%;bottom:14px;z-index:3;transform:translateX(-50%);display:flex;justify-content:center;color:var(--muted);font-size:.92rem;text-align:center;padding:0 16px}
+.overlay,.success{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(4,4,5,.72);backdrop-filter:blur(8px)}
+.overlay.open,.success.open{display:flex}
+.modal{width:min(560px,100%);border-radius:24px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(33,23,18,.96),rgba(13,10,9,.97));box-shadow:var(--shadow);padding:22px;position:relative;overflow:hidden}
+.modal:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at top,rgba(255,215,146,.12),transparent 42%);pointer-events:none}
+.modal h2{margin:0 0 10px;font-size:1.2rem;color:#f7e7c3}
+.modal p{margin:0;line-height:1.6;color:var(--muted);font-size:clamp(.95rem,1.3vw,1.05rem)}
+.paper{margin-top:16px;padding:18px;border-radius:18px;color:#412915;background:linear-gradient(180deg,rgba(230,204,159,.98),rgba(197,160,102,.96));box-shadow:inset 0 0 28px rgba(110,69,29,.14);white-space:pre-line;font-size:1.05rem}
+.house-card{margin-top:16px;border-radius:18px;border:1px solid rgba(255,239,211,.12);padding:16px;color:#fff8ea;position:relative;overflow:hidden}
+.house-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at top,rgba(255,255,255,.18),transparent 45%);pointer-events:none}
+.badge{margin-top:14px;display:inline-flex;min-width:74px;justify-content:center;align-items:center;padding:12px 16px;border-radius:999px;border:1px solid rgba(255,247,228,.24);background:rgba(0,0,0,.16);font-size:2rem;font-weight:700;letter-spacing:.15em}
+.window-readout,.lock-panel{margin-top:16px;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,240,204,.12);background:rgba(255,245,221,.04)}
+.read-order{margin-top:10px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;color:#f6e2bd;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
+.read-order span{min-width:32px;text-align:center}
+.lock-inputs{display:grid;grid-template-columns:repeat(6,minmax(42px,56px));gap:10px;justify-content:center;margin:14px 0 12px}
+.lock-inputs input{width:100%;height:58px;text-align:center;text-transform:uppercase;font-size:1.6rem;border-radius:14px;border:1px solid rgba(255,231,185,.18);color:#f8ebd1;background:rgba(9,7,6,.88)}
+.lock-inputs input:focus{outline:none;border-color:rgba(246,214,146,.52);box-shadow:0 0 18px rgba(243,202,116,.18)}
+.message{min-height:24px;font-size:clamp(.95rem,1.3vw,1.05rem);color:var(--muted);text-align:center}
+.message.error{color:var(--err)}
+.message.success{color:var(--ok)}
+.actions{margin-top:18px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.btn{border:1px solid rgba(255,229,179,.22);border-radius:999px;background:rgba(255,239,210,.06);color:#f7e7c5;padding:10px 16px;cursor:pointer;transition:transform .18s ease,background-color .18s ease,box-shadow .18s ease}
+.btn:hover,.btn:focus-visible{outline:none;transform:translateY(-1px);background:rgba(255,239,210,.1);box-shadow:0 0 16px rgba(242,201,116,.18)}
+.btn.primary{background:linear-gradient(180deg,rgba(171,122,58,.32),rgba(96,58,26,.3))}
+.success-card{width:min(780px,100%);border-radius:30px;padding:clamp(24px,4vw,42px);background:radial-gradient(circle at top,rgba(157,244,209,.22),transparent 34%),linear-gradient(180deg,rgba(9,24,21,.95),rgba(7,13,12,.98));border:1px solid rgba(146,239,201,.28);box-shadow:0 0 26px rgba(146,239,201,.18),0 24px 80px rgba(0,0,0,.55);text-align:center;position:relative;overflow:hidden}
+.ring{position:absolute;inset:12% 18%;border-radius:50%;border:1px solid rgba(163,246,211,.16);box-shadow:0 0 0 8px rgba(163,246,211,.03),0 0 42px rgba(163,246,211,.16);animation:pulse 2.8s ease-in-out infinite;pointer-events:none}
+.word{margin:0 0 16px;font-size:clamp(2.7rem,8vw,5.4rem);letter-spacing:.34em;text-indent:.34em;color:#e8fff1;text-shadow:0 0 14px rgba(146,239,201,.45),0 0 34px rgba(146,239,201,.24);opacity:0;transform:scale(.94);animation:reveal .9s .18s forwards}
+.line{width:min(360px,90%);height:1px;margin:0 auto 18px;background:linear-gradient(90deg,transparent,rgba(227,255,240,.72),transparent);opacity:0;animation:fade .7s .32s forwards}
+.quote{margin:0;white-space:pre-line;color:#dff8e7;line-height:1.6;font-size:clamp(1.1rem,2.2vw,1.45rem);opacity:0;animation:fade .8s .48s forwards}
+.close-success{margin-top:24px}
+@keyframes pulse{0%,100%{transform:scale(.98);opacity:.55}50%{transform:scale(1.02);opacity:.95}}
+@keyframes reveal{from{opacity:0;transform:scale(.9) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media (max-width:960px){.hud{left:16px;right:auto;display:grid;grid-template-columns:1fr;transform-origin:top left}}
+@media (max-width:720px){.zone:after{display:none}.lock-inputs{grid-template-columns:repeat(6,minmax(38px,1fr))}}
+</style>
+</head>
+<body><a class="corner-link great-hall-link" href="grotezaal.html">Terug naar de Grote Zaal</a>
+<div class="intro-shell" id="introShell"><section class="puzzle-shell intro-only"><header class="puzzle-header"><h1>De Slaapzaal van Glas</h1><p>Luistert, gij die deze slaapzaal betreedt.<br>Vier huizen waken over dit vertrek, elk dragende zijn eigen teken en geheim.<br>Slechts zij die hun ware tekens herkennen en hun wijsheid verenigen, zullen zien wat het glas onthult, wanneer de vier één worden.</p><button class="start-btn" type="button" id="startPuzzleBtn">Start de puzzel</button></header></section></div>
+<div class="hud" id="hud" aria-live="polite" hidden><section class="hud-panel"><h1>De Slaapzaal van Glas</h1><p>Luistert, gij die deze slaapzaal betreedt.<br>Vier huizen waken over dit vertrek, elk dragende zijn eigen teken en geheim.<br>Slechts zij die hun ware tekens herkennen en hun wijsheid verenigen, zullen zien wat het glas onthult, wanneer de vier één worden.</p><div class="hud-divider" aria-hidden="true"></div><p class="status-line" id="statusLine">0 van 4 koffers ontdekt. Het raam bewaart nog zijn volledige volgorde.</p><p class="letters-line" id="lettersLine">Ontdekte letters: - - - -</p></section></div>
+<main class="screen"><div class="room-shell"><section class="room-scene pre-start" aria-label="Magische slaapzaal">
+<!-- POSITIONERING: perkamentzones op de bestaande perkamentrol onderin. -->
+<button class="zone parchment" type="button" data-zone="parchment-1" data-label="Perkament 1" style="left:30.6452%;top:73.8095%;width:12.9032%;height:16.6667%"></button>
+<button class="zone parchment" type="button" data-zone="parchment-2" data-label="Perkament 2" style="left:46.7742%;top:73.8095%;width:12.9032%;height:16.6667%"></button>
+<!-- POSITIONERING: vier zichtbare koffers voor de bedden. -->
+<button class="zone trunk" type="button" data-zone="trunk-griffoendor" data-label="Koffer Griffoendor" style="left:17.7419%;top:64.2857%;width:11.2903%;height:9.5238%"></button>
+<button class="zone trunk" type="button" data-zone="trunk-zwadderich" data-label="Koffer Zwadderich" style="left:35.4839%;top:59.5238%;width:8.0645%;height:7.1429%"></button>
+<button class="zone trunk" type="button" data-zone="trunk-ravenklauw" data-label="Koffer Ravenklauw" style="left:46.7742%;top:59.5238%;width:8.0645%;height:7.1429%"></button>
+<button class="zone trunk" type="button" data-zone="trunk-huffelpuf" data-label="Koffer Huffelpuf" style="left:62.9032%;top:64.2857%;width:11.2903%;height:9.5238%"></button>
+<!-- POSITIONERING: glas-in-loodraam. Zes panelen volgen links naar rechts. -->
+<button class="zone window-zone" type="button" data-zone="window" data-label="Glas-in-lood raam" style="left:38.0952%;top:8.3333%;width:14.2857%;height:25%"><span class="sun-guide" aria-hidden="true"></span><span class="window-letters" id="windowLetters" aria-hidden="true"></span></button>
+<!-- POSITIONERING: minimale slotzone op de voorgrond; verfijn later als de bedoelde eindkistplek anders is. -->
+<button class="zone final" type="button" data-zone="final-lock" data-label="Slot van de eindkist" style="left:44.3548%;top:66.6667%;width:1.6129%;height:2.381%"><span class="lock-glyph" aria-hidden="true"></span></button>
+</section></div></main>
+<div class="overlay" id="overlay" aria-hidden="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h2 id="mTitle"></h2><p id="mLead"></p><div id="mBody"></div><div class="actions" id="mActions"><button class="btn" type="button" id="closeModal">Sluiten</button></div></section></div>
+<div class="success" id="success" aria-hidden="true"><div class="success-panel"><section class="success-card" role="dialog" aria-modal="true" aria-labelledby="successWord"><div class="ring" aria-hidden="true"></div><h2 class="word" id="successWord">VITREA</h2><div class="line" aria-hidden="true"></div><p class="quote">"Alleen wie de huizen verenigt,
+ziet door het glas van waarheid."</p><button class="btn close-success" type="button" id="closeSuccess">Sluiten</button></section><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div></div>
+<script src="assets/style/progress.js"></script>
+<script src="assets/style/room-nav.js"></script>
+<script>
+const STORAGE_KEY="hp_room_sleep_word",ROOM1_PARAM="r1",SOLUTION_WORD="VITREA",greatHallLinks=[...document.querySelectorAll(".great-hall-link")];
+function syncGreatHallLink(extraValue=null){greatHallLinks.forEach(link=>window.HPRoomNav.syncGreatHallLink(link,ROOM1_PARAM,extraValue))}
+function updateOwnUrlParam(value){window.HPRoomNav.updateOwnUrlParam(ROOM1_PARAM,value)}
+function setProgress(key,value){window.HPProgress.set(key,value);if(key===STORAGE_KEY){updateOwnUrlParam(value);syncGreatHallLink(value)}}
+syncGreatHallLink();
+const state={trunks:new Set(),parchments:new Set(),window:false,solved:false};
+const notes={"parchment-1":"\"Wanneer de vier huizen hun geheim delen,\nvormt hun wijsheid het woord dat het glas zal openen.\"","parchment-2":"\"Lees het glas zoals de ochtendzon het raakt.\""};
+const houses={"trunk-griffoendor":{id:"griffoendor",name:"Griffoendor",letter:"V",glyph:"L",bg:"linear-gradient(180deg,rgba(141,29,31,.94),rgba(91,17,18,.94))",edge:"#d9b36b",text:"#fff0da"},"trunk-ravenklauw":{id:"ravenklauw",name:"Ravenklauw",letter:"I",glyph:"A",bg:"linear-gradient(180deg,rgba(22,55,112,.94),rgba(13,30,66,.94))",edge:"#c8d3db",text:"#eef4ff"},"trunk-zwadderich":{id:"zwadderich",name:"Zwadderich",letter:"T",glyph:"S",bg:"linear-gradient(180deg,rgba(22,84,55,.94),rgba(10,45,29,.94))",edge:"#c8d0d2",text:"#eefdf4"},"trunk-huffelpuf":{id:"huffelpuf",name:"Huffelpuf",letter:"R",glyph:"D",bg:"linear-gradient(180deg,rgba(192,148,34,.96),rgba(120,85,14,.94))",edge:"#18120a",text:"#1a1208"}};
+const order=["griffoendor","ravenklauw","zwadderich","huffelpuf"];const glass=[{k:"griffoendor",l:"V",a:"#7f1f25",b:"#bd8241"},{k:"ravenklauw",l:"I",a:"#1e4a8a",b:"#9cc4ea"},{k:"zwadderich",l:"T",a:"#20664c",b:"#8ec3a7"},{k:"huffelpuf",l:"R",a:"#916c17",b:"#f3d37d"},{k:"hidden-e",l:"E",a:"#68426f",b:"#dcbae9",peek:true},{k:"hidden-a",l:"A",a:"#8d5527",b:"#f2c27a",peek:true}];
+const overlay=document.getElementById("overlay"),mTitle=document.getElementById("mTitle"),mLead=document.getElementById("mLead"),mBody=document.getElementById("mBody"),mActions=document.getElementById("mActions"),statusLine=document.getElementById("statusLine"),lettersLine=document.getElementById("lettersLine"),windowZone=document.querySelector('[data-zone="window"]'),windowLetters=document.getElementById("windowLetters"),success=document.getElementById("success"),roomScene=document.querySelector(".room-scene"),introShell=document.getElementById("introShell"),startPuzzleBtn=document.getElementById("startPuzzleBtn"),hudPanel=document.getElementById("hud");
+let hasStarted=false;
+function buildGlass(){glass.forEach(s=>{const n=document.createElement("span");n.className="window-slot"+(s.peek?" peek":"");n.dataset.key=s.k;n.style.setProperty("--a",s.a);n.style.setProperty("--b",s.b);const t=document.createElement("span");t.className="slot-letter";t.textContent=s.l;n.appendChild(t);windowLetters.appendChild(n)})}
+function foundLetters(){return order.map(id=>{const h=Object.values(houses).find(x=>x.id===id);return state.trunks.has(id)?h.letter:"-"})}
+function startPuzzle(){hasStarted=true;introShell.hidden=true;hudPanel.hidden=false;startPuzzleBtn.disabled=true;roomScene.classList.remove("pre-start")}
+function hud(){statusLine.textContent=state.trunks.size+" van 4 koffers ontdekt. "+(state.window?"Het raam toont nu zijn volgorde van links naar rechts.":"Het raam bewaart nog zijn volledige volgorde.");lettersLine.textContent="Ontdekte letters: "+foundLetters().join(" ")}
+function sync(){document.querySelectorAll(".trunk").forEach(z=>{const h=houses[z.dataset.zone];z.classList.toggle("done",state.trunks.has(h.id))});document.querySelectorAll(".parchment").forEach(z=>z.classList.toggle("done",state.parchments.has(z.dataset.zone)));windowZone.classList.toggle("done",state.window);document.querySelectorAll(".window-slot").forEach(s=>{const k=s.dataset.key;const reveal=order.includes(k)?state.trunks.has(k):state.window;s.classList.toggle("revealed",reveal)})}
+function openModal(title,lead,node,actions){mTitle.textContent=title;mLead.textContent=lead;mBody.innerHTML="";mBody.appendChild(node);mActions.innerHTML="";(actions&&actions.length?actions:[{label:"Sluiten",click:closeModal}]).forEach(a=>{const b=document.createElement("button");b.type="button";b.className="btn"+(a.primary?" primary":"");b.textContent=a.label;b.addEventListener("click",a.click);mActions.appendChild(b)});overlay.classList.add("open");overlay.setAttribute("aria-hidden","false")}
+function closeModal(){overlay.classList.remove("open");overlay.setAttribute("aria-hidden","true")}
+function openParchment(id){state.parchments.add(id);const d=document.createElement("div");d.className="paper";d.textContent=notes[id];openModal(id==="parchment-1"?"Perkament 1":"Perkament 2","De tekst op het perkament lijkt bedoeld voor deze kamer.",d);sync()}
+function openTrunk(id){const h=houses[id];const wrap=document.createElement("div");const intro=document.createElement("p");intro.textContent="Welke huiskoffer heb je geopend? Kies het juiste huis om de letter vrij te geven.";const choices=document.createElement("div");choices.style.display="grid";choices.style.gridTemplateColumns="repeat(2,minmax(0,1fr))";choices.style.gap="10px";choices.style.marginTop="16px";const msg=document.createElement("div");msg.className="message";msg.style.marginTop="12px";const options=["Griffoendor","Zwadderich","Ravenklauw","Huffelpuf"];const shuffled=[...options].sort(()=>Math.random()-.5);function reveal(){state.trunks.add(h.id);wrap.innerHTML="";const card=document.createElement("section");card.className="house-card";card.style.background=h.bg;card.style.color=h.text;const n=document.createElement("strong");n.textContent=h.name;const p=document.createElement("p");p.style.marginTop="8px";p.style.color=h.text;p.textContent="De juiste keuze onthult de huisletter die bij deze koffer hoort.";const b=document.createElement("div");b.className="badge";b.textContent=h.letter;const ok=document.createElement("div");ok.className="message success";ok.style.marginTop="12px";ok.textContent="Correct. De letter is vrijgegeven.";card.append(n,p,b);wrap.append(card,ok);hud();sync()}shuffled.forEach(name=>{const btn=document.createElement("button");btn.type="button";btn.className="btn";btn.textContent=name;btn.addEventListener("click",()=>{if(name===h.name){reveal()}else{msg.textContent="Onjuiste keuze. Deze koffer hoort bij een ander huis.";msg.className="message error"}});choices.appendChild(btn)});wrap.append(intro,choices,msg);openModal("Kofferonderzoek","De koffer vraagt om het juiste huis te herkennen.",wrap);if(state.trunks.has(h.id)){reveal()}}
+function openWindow(){state.window=true;const wrap=document.createElement("div");const panel=document.createElement("section");panel.className="window-readout";const p=document.createElement("p");p.textContent="Het glas reageert als een zonnestraal over de panelen schuift. De leesrichting loopt duidelijk van links naar rechts.";const ro=document.createElement("div");ro.className="read-order";glass.map(s=>order.includes(s.k)?(state.trunks.has(s.k)?s.l:"-"):s.l).forEach(l=>{const x=document.createElement("span");x.textContent=l;ro.appendChild(x)});panel.append(p,ro);wrap.appendChild(panel);openModal("Glas-in-lood raam","Het patroon maakt een volgorde zichtbaar zodra je het raam aandachtig leest.",wrap);hud();sync()}
+function lockPanel(){const w=document.createElement("section");w.className="lock-panel";const p=document.createElement("p");p.textContent="Voer een woord van 6 letters in. Alleen letters zijn geldig.";const wrap=document.createElement("div");wrap.className="lock-inputs";const msg=document.createElement("div");msg.className="message";msg.textContent="Het slot wacht op het juiste woord.";const ins=[];function shake(){ins.forEach((i,n)=>i.animate([{transform:"translateX(0)"},{transform:"translateX("+(n%2?"4px":"-4px")+")"},{transform:"translateX(0)"}],{duration:180,iterations:2}))}function submit(){const word=ins.map(i=>i.value.trim().toUpperCase()).join("");if(!/^[A-Z]{6}$/.test(word)){msg.textContent="Gebruik precies 6 letters.";msg.className="message error";shake();return}if(word!==SOLUTION_WORD){msg.textContent="Het slot weigert. De magie voelt onvolledig.";msg.className="message error";shake();return}msg.textContent="Het slot opent met een zachte resonantie.";msg.className="message success";state.solved=true;setProgress(STORAGE_KEY,SOLUTION_WORD);closeModal();setTimeout(openSuccess,180)}for(let i=0;i<6;i+=1){const input=document.createElement("input");input.type="text";input.inputMode="text";input.autocomplete="off";input.maxLength=1;input.setAttribute("aria-label","Letter "+(i+1));input.addEventListener("input",()=>{input.value=input.value.replace(/[^a-z]/gi,"").slice(0,1).toUpperCase();if(input.value&&ins[i+1])ins[i+1].focus()});input.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!input.value&&ins[i-1])ins[i-1].focus();if(e.key==="ArrowLeft"&&ins[i-1]){e.preventDefault();ins[i-1].focus()}if(e.key==="ArrowRight"&&ins[i+1]){e.preventDefault();ins[i+1].focus()}if(e.key==="Enter")submit()});ins.push(input);wrap.appendChild(input)}const btn=document.createElement("button");btn.type="button";btn.className="btn primary";btn.textContent="Ontgrendel";btn.addEventListener("click",submit);w.append(p,wrap,msg,btn);setTimeout(()=>ins[0].focus(),0);return w}
+function openLock(){openModal("Eindkist","Een slot van zes letters wacht op het woord dat door de huizen en het glas wordt gevormd.",lockPanel(),[{label:"Sluiten",click:closeModal}])}
+function openSuccess(){success.classList.add("open");success.setAttribute("aria-hidden","false")}function closeSuccess(){success.classList.remove("open");success.setAttribute("aria-hidden","true")}
+document.querySelectorAll(".zone").forEach(z=>{z.addEventListener("click",()=>{if(!hasStarted)return;const id=z.dataset.zone;if(id.startsWith("parchment"))return openParchment(id);if(id.startsWith("trunk"))return openTrunk(id);if(id==="window")return openWindow();if(id==="final-lock")openLock()});z.addEventListener("mouseenter",()=>{if(!hasStarted)return;if(z.dataset.zone==="window")z.classList.add("active")});z.addEventListener("mouseleave",()=>z.classList.remove("active"))});
+overlay.addEventListener("click",e=>{if(e.target===overlay)closeModal()});success.addEventListener("click",e=>{if(e.target===success)closeSuccess()});document.getElementById("closeModal").addEventListener("click",closeModal);document.getElementById("closeSuccess").addEventListener("click",closeSuccess);startPuzzleBtn.addEventListener("click",startPuzzle);buildGlass();hud();sync();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

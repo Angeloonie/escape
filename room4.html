@@ -1,0 +1,1296 @@
+<!--
+PAGINA: Kamer 4 - Magische Kerker
+DOEL: Interactieve escape-room scene met drie puzzels en een eindspreuk.
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magische Kerker</title>
+  <link rel="stylesheet" href="assets/style/timer.css" />
+  <style>
+    :root {
+      --gold: #d4b36a;
+      --ink: #0b1019;
+      --panel: rgba(10, 15, 25, 0.82);
+      --text: #eef2f7;
+      --blue: #58a6ff;
+      --blue-soft: rgba(88, 166, 255, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0a0f17;
+      color: var(--text);
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+      overflow: hidden;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .corner-link {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 5;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      background: var(--gold);
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+    .corner-link:hover {
+      filter: brightness(1.06);
+    }
+
+    .intro-shell {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      pointer-events: auto;
+    }
+
+    .intro-shell[hidden] {
+      display: none;
+    }
+
+    .puzzle-shell {
+      position: relative;
+      width: min(900px, 92vw);
+      margin: 0 auto;
+      background: rgba(8, 12, 20, 0.78);
+      border: 1px solid rgba(212, 179, 106, 0.35);
+      border-radius: 18px;
+      padding: clamp(18px, 3vw, 28px);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      transform: scale(0.75);
+      transform-origin: top center;
+      pointer-events: auto;
+    }
+
+    .puzzle-shell.intro-only .puzzle-header {
+      margin-bottom: 0;
+      text-align: center;
+    }
+
+    .puzzle-shell.intro-only .puzzle-header p {
+      max-width: 76ch;
+      margin: 0 auto;
+    }
+
+    .puzzle-header {
+      border: 1px solid rgba(212, 179, 106, 0.35);
+      border-radius: 16px;
+      background: rgba(10, 15, 25, 0.82);
+      padding: 18px;
+    }
+
+    .puzzle-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 2.4vw, 2.2rem);
+      color: #f7ead2;
+    }
+
+    .puzzle-header p {
+      margin: 0;
+      line-height: 1.6;
+      color: #e6ddc8;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .start-btn {
+      margin-top: 16px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      background: rgba(212, 179, 106, 0.15);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font: 700 1rem/1 "Cormorant Garamond", "Times New Roman", serif;
+    }
+
+    .start-btn:hover {
+      background: rgba(212, 179, 106, 0.25);
+    }
+    .success-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+    }
+    .success-return {
+      position: static;
+      top: auto;
+      left: auto;
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      background: var(--gold);
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      line-height: 1.2;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+
+    .scene-wrap {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .scene-wrap.pre-start .hotspot {
+      opacity: 0;
+      pointer-events: auto;
+    }
+
+    .camera {
+      position: absolute;
+      inset: 0;
+      transform-origin: center;
+      transition: transform 0.55s ease;
+    }
+
+    .camera.zoom-tafel {
+      transform: scale(1.2) translate(8%, 8%);
+    }
+
+    .camera.zoom-ketel {
+      transform: scale(1.2) translate(-3%, 10%);
+    }
+
+    .camera.zoom-poort {
+      transform: scale(1.2) translate(-10%, 6%);
+    }
+
+    .bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.95) saturate(1);
+    }
+
+    .vignette {
+      position: absolute;
+      inset: 0;
+      background: none;
+      pointer-events: auto;
+    }
+
+    .hotspot {
+      position: absolute;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      outline: none;
+      background-color: transparent;
+      color: #f7e7bf;
+      cursor: pointer;
+      box-shadow: none;
+      animation: none;
+      transition: transform 0.2s ease;
+      padding: 0;
+      font-weight: 700;
+      font-size: 0;
+      backdrop-filter: none;
+    }
+
+    .hotspot:hover,
+    .hotspot:focus-visible {
+      transform: translateY(-2px);
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .hotspot-tafel {
+      left: 37.5%;
+      top: 50%;
+      width: 3.125%;
+      height: 8.333%;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(118, 54, 42, 0.95) 0 7px, rgba(118, 54, 42, 0) 18px);
+      color: transparent;
+      font-size: 0;
+      animation: tafel-glow 2.2s ease-in-out infinite;
+      box-shadow: none;
+    }
+
+    .hotspot-tafel:hover,
+    .hotspot-tafel:focus-visible {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(146, 72, 56, 0.97) 0 8px, rgba(186, 104, 82, 0.44) 14px, rgba(186, 104, 82, 0) 22px);
+      border-color: transparent;
+      transform: none;
+      box-shadow: none;
+    }
+    .hotspot-ketel {
+      left: 26.0817%;
+      top: 67.2619%;
+      width: 9.375%;
+      height: 8.333%;
+      min-width: 110px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(166, 122, 38, 0.92) 0 7px, rgba(166, 122, 38, 0) 18px);
+      color: transparent;
+      font-size: 0;
+      animation: ketel-glow 2.2s ease-in-out infinite;
+      box-shadow: none;
+    }
+
+    .hotspot-ketel:hover,
+    .hotspot-ketel:focus-visible {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(212, 158, 62, 0.95) 0 8px, rgba(255, 188, 86, 0.42) 14px, rgba(255, 188, 86, 0) 22px);
+      border-color: transparent;
+      transform: none;
+      box-shadow: none;
+    }
+    .hotspot-poort {
+      left: 68.75%;
+      top: 33.333%;
+      width: 3.125%;
+      height: 8.333%;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(62, 116, 184, 0.94) 0 7px, rgba(62, 116, 184, 0) 18px);
+      color: transparent;
+      font-size: 0;
+      animation: poort-glow 2.2s ease-in-out infinite;
+      box-shadow: none;
+    }
+
+    .hotspot-poort:hover,
+    .hotspot-poort:focus-visible {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(88, 154, 236, 0.96) 0 8px, rgba(132, 196, 255, 0.45) 14px, rgba(132, 196, 255, 0) 22px);
+      border-color: transparent;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .hud {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      z-index: 25;
+      width: min(533px, 92vw);
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: var(--panel);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+      transform: scale(0.75);
+      transform-origin: top right;
+      transition: transform 0.3s ease, left 0.3s ease, top 0.3s ease, right 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    }
+
+    .hud[hidden] {
+      display: none;
+    }
+
+    .hud.is-spell-ready {
+      left: 50%;
+      top: 50%;
+      right: auto;
+      bottom: auto;
+      width: min(520px, 92vw);
+      transform: translate(-50%, -50%);
+      background: rgba(6, 10, 16, 0.94);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 36px rgba(212, 179, 106, 0.18);
+    }
+
+    .hud.is-spell-ready .hud-intro,
+    .hud.is-spell-ready .hud-divider {
+      display: none;
+    }
+
+    .hud.is-spell-ready .hud-title {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .hud.is-spell-ready .letters,
+    .hud.is-spell-ready .message {
+      text-align: center;
+    }
+
+    .letters {
+      margin: 0;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+      color: #c7c1b1;
+      font-weight: 700;
+    }
+
+    .hud-title {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      color: #f4e8cc;
+      letter-spacing: 0.02em;
+    }
+
+    .hud-intro {
+      margin: 0 0 12px;
+      color: #c7c1b1;
+      line-height: 1.6;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .hud-divider {
+      height: 1px;
+      margin: 12px 0;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .spell-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .spell-row input {
+      flex: 1;
+      min-width: 180px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: rgba(255, 255, 255, 0.04);
+      color: #f3efdf;
+      font-family: inherit;
+      text-transform: uppercase;
+    }
+
+    .spell-row button {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.7);
+      background: rgba(212, 179, 106, 0.16);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .message {
+      margin-top: 8px;
+      min-height: 24px;
+      color: #d8dfec;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .hud.is-spell-ready .message {
+      color: #f6e6b6;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+      font-weight: 700;
+    }
+
+    .panel {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(2, 5, 10, 0.74);
+    }
+
+    .panel.is-open {
+      display: flex;
+    }
+
+    .card {
+      width: min(620px, 95vw);
+      border-radius: 16px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: var(--panel);
+      padding: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      color: #f4e8cc;
+      font-size: 1.2rem;
+    }
+
+    .card p {
+      margin: 0 0 12px;
+      color: #ddd5c4;
+      line-height: 1.6;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .choice-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .choice-row button {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.5);
+      background: rgba(212, 179, 106, 0.12);
+      color: #f7e9c4;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .word-list {
+      margin: 0 0 14px;
+      padding-left: 22px;
+      color: #f4ecda;
+      line-height: 1.7;
+    }
+
+    .hint-box {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(212, 179, 106, 0.28);
+      background: rgba(255, 255, 255, 0.04);
+      color: #efe4c2;
+    }
+
+    .answer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .answer-row input {
+      flex: 1;
+      min-width: 180px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: rgba(255, 255, 255, 0.04);
+      color: #f3efdf;
+      font-family: inherit;
+      text-transform: uppercase;
+    }
+
+    .letter-inputs {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .letter-inputs input {
+      flex: 1;
+      min-width: 0;
+      max-width: 64px;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .answer-row button,
+    .secondary-action {
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.5);
+      background: rgba(212, 179, 106, 0.12);
+      color: #f7e9c4;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .secondary-action[hidden] {
+      display: none;
+    }
+
+    .letters-out {
+      min-height: 30px;
+      color: #9ce6ff;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      margin-bottom: 10px;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .small-msg {
+      min-height: 24px;
+      color: #d8dfec;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .close-btn {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.55);
+      background: rgba(212, 179, 106, 0.12);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .result-overlay {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: min(50vw, 720px);
+      min-width: 320px;
+      min-height: min(50vh, 320px);
+      transform: translate(-50%, -50%);
+      background: rgba(5, 10, 16, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      padding: 24px;
+      text-align: center;
+      border-radius: 32px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+    }
+
+    .result-overlay.is-visible {
+      display: flex;
+    }
+
+    .result-box {
+      padding: 64px 80px;
+      border-radius: 32px;
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      background: rgba(20, 66, 42, 0.82);
+      color: #f8edd0;
+      font-size: clamp(2.2rem, 4vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      animation: answer-pulse 2.6s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .magic-sparkle {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 70;
+      opacity: 0;
+    }
+
+    .magic-sparkle.is-active {
+      opacity: 1;
+    }
+
+    .magic-star {
+      position: absolute;
+      left: 0;
+      top: 0;
+      line-height: 1;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+      mix-blend-mode: screen;
+      color: var(--star-color, #fff4b8);
+      font-size: var(--star-size, 20px);
+      text-shadow:
+        0 0 6px rgba(255, 240, 180, 0.9),
+        0 0 16px rgba(140, 220, 255, 0.5);
+      animation: sparkle-star 3s ease-out forwards;
+      animation-delay: var(--star-delay, 0ms);
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(212, 179, 106, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(212, 179, 106, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(212, 179, 106, 0); }
+    }
+
+    @keyframes ketel-glow {
+      0% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(212, 158, 62, 0.22)); }
+      50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 188, 86, 0.58)); }
+      100% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(212, 158, 62, 0.22)); }
+    }
+
+    @keyframes tafel-glow {
+      0% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(118, 54, 42, 0.26)); }
+      50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(186, 104, 82, 0.58)); }
+      100% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(118, 54, 42, 0.26)); }
+    }
+
+    @keyframes poort-glow {
+      0% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(62, 116, 184, 0.26)); }
+      50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(132, 196, 255, 0.62)); }
+      100% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(62, 116, 184, 0.26)); }
+    }
+
+    @keyframes sparkle-star {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+      }
+      18% {
+        opacity: 0.95;
+      }
+      55% {
+        opacity: 0.7;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--star-drift-x, 0px)), calc(-50% + var(--star-drift-y, -22px))) scale(1.15) rotate(var(--star-rotate, 80deg));
+      }
+    }
+
+    @keyframes answer-pulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 28px rgba(212, 179, 106, 0.24), 0 0 52px rgba(212, 179, 106, 0.12), 0 0 0 rgba(212, 179, 106, 0);
+      }
+      50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 60px rgba(212, 179, 106, 0.5), 0 0 104px rgba(212, 179, 106, 0.28), 0 0 156px rgba(212, 179, 106, 0.14);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 28px rgba(212, 179, 106, 0.24), 0 0 52px rgba(212, 179, 106, 0.12), 0 0 0 rgba(212, 179, 106, 0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="corner-link great-hall-link" href="grotezaal.html">Terug naar de Grote Zaal</a>
+  <div class="intro-shell" id="introShell">
+    <section class="puzzle-shell intro-only">
+      <header class="puzzle-header">
+        <h1>Magische Kerker</h1>
+        <p>Diep onder het kasteel ligt de Magische Kerker, een plaats waar oude spreuken nog nagalmen tussen steen en schaduw.<br>Drie verzegelde plekken bewaren ieder een deel van een verborgen formule, alsof de magie zelf haar geheim in stukken heeft verdeeld.<br>Alleen wie de tekens juist onderzoekt, de spreukdelen verzamelt en hun kracht verenigt, kan onthullen wat hier al die tijd opgesloten lag.</p>
+        <button class="start-btn" type="button" id="startPuzzleBtn">Start de puzzel</button>
+      </header>
+    </section>
+  </div>
+
+  <div class="scene-wrap pre-start" id="sceneWrap">
+    <div class="camera" id="camera">
+      <img class="bg" src="assets/images/kerker.png" alt="Magische kerker" />
+      <div class="vignette"></div>
+
+      <button class="hotspot hotspot-tafel" type="button" data-target="tafel" aria-label="Werktafel"></button>
+      <button class="hotspot hotspot-ketel" type="button" data-target="ketel" aria-label="Magische ketel"></button>
+      <button class="hotspot hotspot-poort" type="button" data-target="poort" aria-label="Gevangenispoort"></button>
+    </div>
+
+  </div>
+
+  <div class="result-overlay" id="resultOverlay" aria-hidden="true">
+    <div class="success-stack"><div class="result-box">REVELIO</div><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div>
+  </div>
+  <div class="magic-sparkle" id="magicSparkle" aria-hidden="true"></div>
+
+  <section class="hud" id="spellHud" hidden>
+    <h1 class="hud-title">Magische Kerker</h1>
+    <p class="hud-intro">Diep onder het kasteel ligt de Magische Kerker, een plaats waar oude spreuken nog nagalmen tussen steen en schaduw.<br>Drie verzegelde plekken bewaren ieder een deel van een verborgen formule, alsof de magie zelf haar geheim in stukken heeft verdeeld.<br>Alleen wie de tekens juist onderzoekt, de spreukdelen verzamelt en hun kracht verenigt, kan onthullen wat hier al die tijd opgesloten lag.</p>
+    <div class="hud-divider" aria-hidden="true"></div>
+    <p class="letters">Verzamelde spreukdelen: <span id="collectedLetters">-</span></p>
+    <div class="spell-row">
+      <input id="spellInput" type="text" placeholder="Voer spreuk in..." autocomplete="off" />
+      <button type="button" onclick="checkSpell()">Controleer spreuk</button>
+    </div>
+    <div class="message" id="finalMessage"></div>
+  </section>
+
+  <div class="panel" id="panelTafel" aria-hidden="true">
+    <div class="card">
+      <h2>Puzzel 1 - Spreukenboek</h2>
+      <p>Drie raadsels in het boek verwijzen naar drie woorden. Neem daarna de beginletters.</p>
+      <p class="hint-box">"Ik kras vanuit de toren, ik draag een hoorn van licht, ik brand zonder twijfel."</p>
+      <ul class="word-list" id="tafelWordList"></ul>
+      <div class="answer-row">
+        <div class="letter-inputs" id="tafelLetterInputs">
+          <input type="text" maxlength="1" inputmode="text" autocomplete="off" aria-label="Letter 1" />
+          <input type="text" maxlength="1" inputmode="text" autocomplete="off" aria-label="Letter 2" />
+          <input type="text" maxlength="1" inputmode="text" autocomplete="off" aria-label="Letter 3" />
+        </div>
+        <button type="button" id="solveTafel">Controleer</button>
+      </div>
+      <div class="letters-out" id="lettersTafel"></div>
+      <div class="small-msg" id="msgTafel"></div>
+      <button class="close-btn" type="button" data-close>Sluit</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panelKetel" aria-hidden="true">
+    <div class="card">
+      <h2>Puzzel 2 - De magische ketel</h2>
+      <p>Op de muur staat een brouwvolgorde uitgehakt.</p>
+      <p class="hint-box">"Begin met wat beschermt, voeg daarna toe wat hitte bewaart. Alles wat bevriest bederft de ketel."</p>
+      <ul class="word-list" id="ketelWordList"></ul>
+      <div class="choice-row" id="ketelChoiceRow"></div>
+      <div class="small-msg" id="msgKetel"></div>
+      <div class="letters-out" id="lettersKetel"></div>
+      <button class="close-btn" type="button" data-close>Sluit</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panelPoort" aria-hidden="true">
+    <div class="card">
+      <h2>Puzzel 3 - Gevangenispoort</h2>
+      <p>Boven het paneel staat een hint gegraveerd.</p>
+      <p class="hint-box">"Laat de poort eerst verstijven, en pas daarna zien."</p>
+      <ul class="word-list" id="poortWordList"></ul>
+      <div class="choice-row" id="poortChoiceRow"></div>
+      <div class="letters-out" id="lettersPoort"></div>
+      <div class="small-msg" id="msgPoort"></div>
+      <button class="close-btn" type="button" data-close>Sluit</button>
+    </div>
+  </div>
+
+  <audio id="magicSolve" preload="auto">
+    <source src="assets/sounds/succes.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="magicFail" preload="auto">
+    <source src="assets/sounds/faal.mp3" type="audio/mpeg" />
+  </audio>
+
+  <script src="assets/style/audio-fade.js"></script>
+  <script src="assets/style/timer.js"></script>
+  <script src="assets/style/progress.js"></script>
+  <script src="assets/style/room-nav.js"></script>
+  <script>
+    const STORAGE_KEY = "hp_room_dungeon_word";
+    const ROOM4_PARAM = "r4";
+    const SOLUTION_WORD = "REVELIO";
+    const greatHallLinks = [...document.querySelectorAll(".great-hall-link")];
+
+    function syncGreatHallLink(extraValue = null) {
+      greatHallLinks.forEach((link) => window.HPRoomNav.syncGreatHallLink(link, ROOM4_PARAM, extraValue));
+    }
+
+    function updateOwnUrlParam(value) {
+      window.HPRoomNav.updateOwnUrlParam(ROOM4_PARAM, value);
+    }
+
+    function setProgress(key, value) {
+      window.HPProgress.set(key, value);
+      if (key === STORAGE_KEY) {
+        updateOwnUrlParam(value);
+        syncGreatHallLink(value);
+      }
+    }
+    syncGreatHallLink();
+
+    const camera = document.getElementById("camera");
+    const sceneWrap = document.getElementById("sceneWrap");
+    const introShell = document.getElementById("introShell");
+    const startPuzzleBtn = document.getElementById("startPuzzleBtn");
+    const spellHud = document.getElementById("spellHud");
+    const collectedLettersEl = document.getElementById("collectedLetters");
+    const finalMessage = document.getElementById("finalMessage");
+
+    const panelTafel = document.getElementById("panelTafel");
+    const panelKetel = document.getElementById("panelKetel");
+    const panelPoort = document.getElementById("panelPoort");
+
+    const lettersTafel = document.getElementById("lettersTafel");
+    const lettersKetel = document.getElementById("lettersKetel");
+    const lettersPoort = document.getElementById("lettersPoort");
+    const msgTafel = document.getElementById("msgTafel");
+    const msgKetel = document.getElementById("msgKetel");
+    const msgPoort = document.getElementById("msgPoort");
+    const tafelLetterInputs = [...document.querySelectorAll("#tafelLetterInputs input")];
+    const solveTafel = document.getElementById("solveTafel");
+    const tafelWordList = document.getElementById("tafelWordList");
+    const ketelWordList = document.getElementById("ketelWordList");
+    const poortWordList = document.getElementById("poortWordList");
+    const ketelChoiceRow = document.getElementById("ketelChoiceRow");
+    const poortChoiceRow = document.getElementById("poortChoiceRow");
+    const resultOverlay = document.getElementById("resultOverlay");
+    const magicSparkle = document.getElementById("magicSparkle");
+    const magicSolve = document.getElementById("magicSolve");
+    const magicFail = document.getElementById("magicFail");
+    const spellInput = document.getElementById("spellInput");
+    const puzzleControls = document.querySelectorAll(".hotspot, .panel button, .panel input, .hud input, .hud button");
+    const STAR_GLYPHS = ["\u2726", "\u2727", "\u2605"];
+    const STAR_COLORS = ["#fff7c7", "#dff7ff", "#f6e2aa", "#d0ffe8"];
+
+    const puzzleDone = { tafel: false, ketel: false, poort: false };
+    const spellParts = { tafel: "REV", ketel: "EL", poort: "IO" };
+    const spellOrder = ["tafel", "ketel", "poort"];
+    const tafelWords = ["Raaf", "Eenhoorn", "Vuur", "Slang", "Maansteen", "Feniks"];
+    const ketelOptions = ["Engelwortel", "Lavasteen", "IJsbloem", "Schaduwmos", "Maanstof"];
+    const poortOptions = ["IJs", "Oog", "Maan", "Vlam", "Steen"];
+    let ketelSequence = [];
+    let gateSequence = [];
+    let sparkleTimer = null;
+    let puzzleStarted = false;
+    let roomSolved = false;
+
+    window.CinematicAudio.register(magicSolve, {
+      volume: 0.92,
+      fadeInMs: 440,
+      fadeOutMs: 760,
+      endFadeMs: 860,
+    });
+    window.CinematicAudio.register(magicFail, {
+      volume: 0.86,
+      fadeInMs: 360,
+      fadeOutMs: 620,
+      endFadeMs: 720,
+    });
+    const primeRoomAudio = () => {
+      window.CinematicAudio.prime(magicSolve);
+      window.CinematicAudio.prime(magicFail);
+    };
+    document.addEventListener("pointerdown", primeRoomAudio, { once: true });
+    document.addEventListener("keydown", primeRoomAudio, { once: true });
+
+    function shuffleArray(values) {
+      const shuffled = [...values];
+      for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    function renderWordList(listEl, values) {
+      listEl.innerHTML = "";
+      shuffleArray(values).forEach((value) => {
+        const item = document.createElement("li");
+        item.textContent = value;
+        listEl.appendChild(item);
+      });
+    }
+
+    function renderChoiceRow(rowEl, attrName, values) {
+      rowEl.innerHTML = "";
+      shuffleArray(values).forEach((value) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset[attrName] = value;
+        button.textContent = value;
+        rowEl.appendChild(button);
+      });
+    }
+
+    function renderPuzzleOptions(target) {
+      if (target === "tafel") {
+        renderWordList(tafelWordList, tafelWords);
+      }
+      if (target === "ketel") {
+        renderWordList(ketelWordList, ketelOptions);
+        renderChoiceRow(ketelChoiceRow, "ketel", ketelOptions);
+      }
+      if (target === "poort") {
+        renderWordList(poortWordList, poortOptions);
+        renderChoiceRow(poortChoiceRow, "gate", poortOptions);
+      }
+    }
+
+    function updateCollectedLetters() {
+      const orderedParts = spellOrder.filter((key) => puzzleDone[key]).map((key) => spellParts[key]);
+      collectedLettersEl.textContent = orderedParts.length ? orderedParts.join(" ") : "-";
+    }
+
+    function startPuzzle() {
+      if (puzzleStarted) {
+        return;
+      }
+      puzzleStarted = true;
+      sceneWrap.classList.remove("pre-start");
+      spellHud.hidden = false;
+      introShell.hidden = true;
+      finalMessage.textContent = "Onderzoek de drie verzegelde plekken en verzamel de spreukdelen.";
+    }
+
+    function playMagicSound(rate = 1) {
+      if (!magicSolve) {
+        return;
+      }
+      magicSolve.playbackRate = rate;
+      window.CinematicAudio.play(magicSolve, {
+        fadeInMs: 440,
+        fadeOutMs: 760,
+        endFadeMs: 860,
+      });
+    }
+
+    function playFailSound() {
+      if (!magicFail) {
+        return;
+      }
+      window.CinematicAudio.play(magicFail, {
+        fadeInMs: 360,
+        fadeOutMs: 620,
+        endFadeMs: 720,
+      });
+    }
+
+    function playMagicSparkle() {
+      if (!magicSparkle) {
+        return;
+      }
+      magicSparkle.innerHTML = "";
+      for (let i = 0; i < 54; i += 1) {
+        const star = document.createElement("span");
+        star.className = "magic-star";
+        star.textContent = STAR_GLYPHS[Math.floor(Math.random() * STAR_GLYPHS.length)];
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.setProperty("--star-size", `${8 + Math.random() * 92}px`);
+        star.style.setProperty("--star-delay", `${Math.random() * 560}ms`);
+        star.style.setProperty("--star-drift-x", `${-20 + Math.random() * 40}px`);
+        star.style.setProperty("--star-drift-y", `${-42 + Math.random() * 22}px`);
+        star.style.setProperty("--star-rotate", `${-140 + Math.random() * 280}deg`);
+        star.style.setProperty("--star-color", STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)]);
+        magicSparkle.appendChild(star);
+      }
+      magicSparkle.classList.remove("is-active");
+      void magicSparkle.offsetWidth;
+      magicSparkle.classList.add("is-active");
+      if (sparkleTimer) {
+        clearTimeout(sparkleTimer);
+      }
+      sparkleTimer = setTimeout(() => {
+        magicSparkle.classList.remove("is-active");
+        magicSparkle.innerHTML = "";
+      }, 3200);
+    }
+
+    function setSpellReadyState() {
+      const allSolved = Object.values(puzzleDone).every(Boolean);
+      spellHud.classList.toggle("is-spell-ready", allSolved && !roomSolved);
+      if (allSolved && !roomSolved) {
+        finalMessage.textContent = "Alle spreukdelen zijn verzameld, spreek het woord uit...";
+      }
+    }
+
+    function resetOpenProgress() {
+      if (!puzzleDone.ketel) {
+        ketelSequence = [];
+      }
+      if (!puzzleDone.poort) {
+        gateSequence = [];
+      }
+    }
+
+    function lockSolvedRoom() {
+      roomSolved = true;
+      spellHud.classList.remove("is-spell-ready");
+      puzzleControls.forEach((control) => {
+        control.disabled = true;
+      });
+      spellInput.value = SOLUTION_WORD;
+      finalMessage.textContent = "De spreuk is voltooid.";
+    }
+
+    function closePanels() {
+      resetOpenProgress();
+      [panelTafel, panelKetel, panelPoort].forEach((panel) => {
+        panel.classList.remove("is-open");
+        panel.setAttribute("aria-hidden", "true");
+      });
+      camera.classList.remove("zoom-tafel", "zoom-ketel", "zoom-poort");
+    }
+
+    function openPanel(target) {
+      if (!puzzleStarted || roomSolved) {
+        return;
+      }
+      finalMessage.textContent = "";
+      closePanels();
+      if (target === "tafel") {
+        renderPuzzleOptions("tafel");
+        camera.classList.add("zoom-tafel");
+        panelTafel.classList.add("is-open");
+        panelTafel.setAttribute("aria-hidden", "false");
+        setTimeout(() => tafelLetterInputs[0]?.focus(), 0);
+      }
+      if (target === "ketel") {
+        renderPuzzleOptions("ketel");
+        camera.classList.add("zoom-ketel");
+        panelKetel.classList.add("is-open");
+        panelKetel.setAttribute("aria-hidden", "false");
+      }
+      if (target === "poort") {
+        renderPuzzleOptions("poort");
+        camera.classList.add("zoom-poort");
+        panelPoort.classList.add("is-open");
+        panelPoort.setAttribute("aria-hidden", "false");
+      }
+    }
+
+    document.querySelectorAll(".hotspot").forEach((btn) => {
+      btn.addEventListener("click", () => openPanel(btn.dataset.target));
+    });
+
+    startPuzzleBtn.addEventListener("click", startPuzzle);
+
+    document.querySelectorAll("[data-close]").forEach((btn) => {
+      btn.addEventListener("click", closePanels);
+    });
+
+    tafelLetterInputs.forEach((input, index) => {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/[^a-z]/gi, "").slice(0, 1).toUpperCase();
+        if (input.value && tafelLetterInputs[index + 1]) {
+          tafelLetterInputs[index + 1].focus();
+        }
+      });
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Backspace" && !input.value && tafelLetterInputs[index - 1]) {
+          tafelLetterInputs[index - 1].focus();
+        }
+        if (event.key === "ArrowLeft" && tafelLetterInputs[index - 1]) {
+          event.preventDefault();
+          tafelLetterInputs[index - 1].focus();
+        }
+        if (event.key === "ArrowRight" && tafelLetterInputs[index + 1]) {
+          event.preventDefault();
+          tafelLetterInputs[index + 1].focus();
+        }
+        if (event.key === "Enter") {
+          solveTafelPuzzle();
+        }
+      });
+    });
+
+    function solveTafelPuzzle() {
+      if (roomSolved) {
+        return;
+      }
+      const value = tafelLetterInputs.map((input) => input.value.trim().toUpperCase()).join("");
+      if (value !== "REV") {
+        lettersTafel.textContent = "";
+        msgTafel.textContent = "Controleer de drie raadsels en neem dan pas de beginletters.";
+        playFailSound();
+        return;
+      }
+      lettersTafel.textContent = "REV";
+      msgTafel.textContent = "Goed gezien: de drie antwoorden leveren samen REV op.";
+      if (!puzzleDone.tafel) {
+        puzzleDone.tafel = true;
+        updateCollectedLetters();
+        setSpellReadyState();
+        playMagicSound(1);
+        finalMessage.textContent = "Spreukdeel REV is toegevoegd.";
+      }
+    }
+
+    solveTafel.addEventListener("click", solveTafelPuzzle);
+
+    ketelChoiceRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-ketel]");
+      if (!btn) {
+        return;
+      }
+      if (roomSolved) {
+        return;
+      }
+      if (puzzleDone.ketel) {
+        msgKetel.textContent = "De ketel heeft de juiste volgorde al onthouden: EL.";
+        return;
+      }
+      ketelSequence.push(btn.dataset.ketel);
+      msgKetel.textContent = "Gekozen: " + ketelSequence.join(" -> ");
+
+      if (ketelSequence.length === 1 && ketelSequence[0] !== "Engelwortel") {
+        ketelSequence = [];
+        lettersKetel.textContent = "";
+        msgKetel.textContent = "De ketel wil eerst bescherming. Probeer opnieuw.";
+        playFailSound();
+        return;
+      }
+
+      if (ketelSequence.includes("IJsbloem")) {
+        ketelSequence = [];
+        lettersKetel.textContent = "";
+        msgKetel.textContent = "IJsbloem bevriest de magie. De ketel reset.";
+        playFailSound();
+        return;
+      }
+
+      if (ketelSequence.includes("Schaduwmos")) {
+        ketelSequence = [];
+        lettersKetel.textContent = "";
+        msgKetel.textContent = "Schaduwmos smoort het brouwsel direct. De ketel reset.";
+        playFailSound();
+        return;
+      }
+
+      if (ketelSequence.includes("Maanstof")) {
+        ketelSequence = [];
+        lettersKetel.textContent = "";
+        msgKetel.textContent = "Maanstof maakt de mix instabiel. De ketel reset.";
+        playFailSound();
+        return;
+      }
+
+      if (ketelSequence.length === 2) {
+        if (ketelSequence[1] !== "Lavasteen") {
+          ketelSequence = [];
+          lettersKetel.textContent = "";
+          msgKetel.textContent = "Na bescherming hoort hitte te volgen. De ketel reset.";
+          playFailSound();
+          return;
+        }
+
+        lettersKetel.textContent = "EL";
+        msgKetel.textContent = "De juiste brouwvolgorde onthult de letters EL.";
+        puzzleDone.ketel = true;
+        updateCollectedLetters();
+        setSpellReadyState();
+        playMagicSound(1);
+        finalMessage.textContent = "Spreukdeel EL is toegevoegd.";
+      }
+    });
+
+    poortChoiceRow.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-gate]");
+      if (!btn) {
+        return;
+      }
+      if (roomSolved) {
+        return;
+      }
+      if (puzzleDone.poort) {
+        msgPoort.textContent = "De poort herkent de juiste volgorde al: IO.";
+        return;
+      }
+
+      gateSequence.push(btn.dataset.gate);
+      msgPoort.textContent = "Gekozen: " + gateSequence.join(" -> ");
+
+      if (gateSequence.includes("Maan")) {
+        gateSequence = [];
+        lettersPoort.textContent = "";
+        msgPoort.textContent = "Maan hoort niet bij de gegraveerde symbolen. De poort reset.";
+        playFailSound();
+        return;
+      }
+
+      if (gateSequence.includes("Vlam")) {
+        gateSequence = [];
+        lettersPoort.textContent = "";
+        msgPoort.textContent = "Vlam past niet bij een verstijfde poort. Begin opnieuw.";
+        playFailSound();
+        return;
+      }
+
+      if (gateSequence.includes("Steen")) {
+        gateSequence = [];
+        lettersPoort.textContent = "";
+        msgPoort.textContent = "Steen onthult niets. De poort reset.";
+        playFailSound();
+        return;
+      }
+
+      if (gateSequence.length === 1 && gateSequence[0] !== "IJs") {
+        gateSequence = [];
+        lettersPoort.textContent = "";
+        msgPoort.textContent = "De poort moet eerst verstijven. Begin opnieuw.";
+        playFailSound();
+        return;
+      }
+
+      if (gateSequence.length === 2) {
+        if (gateSequence[1] !== "Oog") {
+          gateSequence = [];
+          lettersPoort.textContent = "";
+          msgPoort.textContent = "Na ijs hoort zicht te volgen. De poort reset.";
+          playFailSound();
+          return;
+        }
+
+        lettersPoort.textContent = "IO";
+        msgPoort.textContent = "De gravure klopt: eerst ijs, dan oog. Dat geeft IO.";
+        puzzleDone.poort = true;
+        updateCollectedLetters();
+        setSpellReadyState();
+        closePanels();
+        spellInput.focus();
+        playMagicSound(1);
+      }
+    });
+
+    function checkSpell() {
+      if (roomSolved) {
+        return true;
+      }
+      const value = spellInput.value.trim().toUpperCase();
+      if (!Object.values(puzzleDone).every(Boolean)) {
+        finalMessage.textContent = "Je mist nog spreukdelen uit de drie puzzels.";
+        playFailSound();
+        return false;
+      }
+      if (value === SOLUTION_WORD) {
+        finalMessage.textContent = "";
+        resultOverlay.classList.add("is-visible");
+        resultOverlay.setAttribute("aria-hidden", "false");
+        setProgress(STORAGE_KEY, SOLUTION_WORD);
+        playMagicSound(1);
+        playMagicSparkle();
+        closePanels();
+        lockSolvedRoom();
+        return true;
+      }
+      finalMessage.textContent = "Onjuiste spreuk. Probeer opnieuw.";
+      playFailSound();
+      return false;
+    }
+
+    window.checkSpell = checkSpell;
+    updateCollectedLetters();
+  </script>
+</body>
+</html>

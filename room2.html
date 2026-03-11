@@ -1,0 +1,1059 @@
+<!--
+PAGINA: Kamer 2 - Bibliotheek
+DOEL: Sorteerpuzzel waarin boeken op tijdseenheid-volgorde geplaatst worden om het woord TEMPORA te onthullen.
+ROL IN DE FLOW: Vanuit Grote Zaal; na oplossen terug naar hub met doorgegeven voortgang.
+PUZZELREGELS (indien van toepassing): - Klik/drag boektitel vult eerste lege indexregel; - Validatie: exacte volgorde seconde..jaar; - Succes: result-overlay TEMPORA + opslag progress; - Falen: foutfeedback, hint na 3 missers, reset mogelijk.
+EFFECTEN:
+- Animaties: subtiele hover op kaarten en pulserende gouden glow rond resultaat.
+- Geluid: geen.
+- Visuele effecten: modal voor boektekst, groene oplossing-overlay met glow.
+- Timers of dynamische veranderingen: dynamische slot/letters updates; globale timer-overlay via HPTimer.
+GEBRUIKTE MEDIA:
+- Afbeeldingen: assets/images/bibliotheek.png.
+- Audio: geen.
+- Video: geen.
+- Externe assets: assets/style/timer.css, assets/style/timer.js, assets/style/progress.js, assets/style/room-nav.js.
+BIJZONDERHEDEN:
+- Afhankelijkheden: window.HPProgress en window.HPRoomNav.
+- Globale state impact: schrijft hp_room_library_word en synchroniseert URL-param r2.
+- Edge cases of technische aandachtspunten: klikken op gevulde indexregel leegt regel; dubbele boeken worden verplaatst.
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bibliotheek van Tijd</title>
+  <link rel="stylesheet" href="assets/style/timer.css" />
+  <style>
+    :root {
+      --bg: #0b0f16;
+      --panel: rgba(10, 15, 25, 0.82);
+      --text: #eef2f7;
+      --muted: #c7c1b1;
+      --accent: #d4b36a;
+      --danger: #ff9b9b;
+      --success: #7ff0c6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--bg);
+      background-image: url("assets/images/bibliotheek.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: var(--text);
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+      padding: 24px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .corner-link {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 5;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      background: #d4b36a;
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+
+    .corner-link:hover {
+      filter: brightness(1.06);
+    }
+    .success-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .success-return {
+      position: static;
+      top: auto;
+      left: auto;
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      background: #d4b36a;
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      line-height: 1.2;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+    .puzzle-shell {
+      position: relative;
+      width: min(1200px, 95vw);
+      margin: 0 auto;
+      background: rgba(8, 12, 20, 0.78);
+      border: 1px solid rgba(212, 179, 106, 0.35);
+      border-radius: 18px;
+      padding: clamp(18px, 3vw, 28px);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      transform: scale(0.75);
+      transform-origin: top center;
+    }
+
+    .puzzle-shell.intro-only {
+      width: min(900px, 92vw);
+    }
+
+    .puzzle-shell.intro-only .puzzle-header {
+      margin-bottom: 0;
+      text-align: center;
+    }
+
+    .puzzle-shell.intro-only .puzzle-header p {
+      max-width: 76ch;
+      margin: 0 auto;
+    }
+
+    .puzzle-header {
+      border: 1px solid rgba(212, 179, 106, 0.35);
+      border-radius: 16px;
+      background: var(--panel);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .puzzle-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 2.4vw, 2.2rem);
+      color: #f7ead2;
+    }
+
+    .puzzle-header p {
+      margin: 0;
+      line-height: 1.6;
+      color: #e6ddc8;
+    }
+
+    .start-btn {
+      margin-top: 16px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      background: rgba(212, 179, 106, 0.15);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .start-btn:hover {
+      background: rgba(212, 179, 106, 0.25);
+    }
+
+    .start-btn[hidden] {
+      display: none !important;
+    }
+
+    .puzzle-grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(320px, 1.25fr) minmax(240px, 0.9fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .puzzle-grid.is-hidden {
+      display: none;
+    }
+
+    .panel {
+      border-radius: 16px;
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      color: #f4e8cc;
+      letter-spacing: 0.02em;
+    }
+
+    .books {
+      display: grid;
+      gap: 10px;
+    }
+
+    .book-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .book-card:hover,
+    .book-card:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 0 14px rgba(212, 179, 106, 0.35);
+    }
+
+    .book-title {
+      font-weight: 700;
+      color: #f6e6b6;
+    }
+
+    .book-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.4);
+      background: rgba(212, 179, 106, 0.1);
+      color: #f6e6b6;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .index-board {
+      display: grid;
+      gap: 10px;
+    }
+
+    .slot {
+      display: grid;
+      grid-template-columns: 48px 1fr 64px;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px dashed rgba(212, 179, 106, 0.45);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .slot button {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+    }
+
+    .slot-label {
+      font-weight: 700;
+      color: #f6e6b6;
+    }
+
+    .slot-roman {
+      justify-self: end;
+      font-weight: 700;
+      color: #d9d2bf;
+    }
+
+    .slot-empty {
+      color: rgba(255, 255, 255, 0.4);
+      font-style: italic;
+    }
+
+    .slot.filled {
+      border-style: solid;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .feedback {
+      min-height: 88px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.35);
+      margin-bottom: 12px;
+    }
+
+    .feedback.error {
+      border-color: rgba(255, 155, 155, 0.5);
+      color: #ffdede;
+    }
+
+    .feedback.success {
+      border-color: rgba(127, 240, 198, 0.6);
+      color: #dffdf0;
+    }
+
+    .hint-btn {
+      display: none;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: rgba(212, 179, 106, 0.12);
+      color: #f6e6b6;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .hint-btn.is-visible {
+      display: inline-flex;
+    }
+
+    .reset-btn {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: rgba(212, 179, 106, 0.12);
+      color: #f6e6b6;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .reset-btn:hover {
+      background: rgba(212, 179, 106, 0.2);
+    }
+
+    .catalog-line {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(127, 240, 198, 0.4);
+      background: rgba(20, 40, 30, 0.35);
+      color: #cfeee0;
+      display: none;
+    }
+
+    .catalog-line.is-visible {
+      display: block;
+    }
+
+    .result-panel {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 24px;
+      background: rgba(6, 10, 16, 0.72);
+      text-align: center;
+    }
+
+    .result-panel.is-visible {
+      display: flex;
+    }
+
+    .result-box {
+      padding: 48px 60px;
+      border-radius: 32px;
+      border: 1px solid rgba(212, 179, 106, 0.75);
+      background: rgba(20, 66, 42, 0.82);
+      color: #f6e6b6;
+      font-weight: 700;
+      text-align: center;
+      font-size: clamp(2.2rem, 4vw, 3.2rem);
+      letter-spacing: 0.16em;
+      animation: answer-pulse 2.6s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .magic-sparkle {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0;
+    }
+
+    .magic-sparkle.is-active {
+      opacity: 1;
+    }
+
+    .magic-star {
+      position: absolute;
+      left: 0;
+      top: 0;
+      line-height: 1;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+      mix-blend-mode: screen;
+      color: var(--star-color, #fff4b8);
+      font-size: var(--star-size, 20px);
+      text-shadow:
+        0 0 6px rgba(255, 240, 180, 0.9),
+        0 0 16px rgba(140, 220, 255, 0.5);
+      animation: sparkle-star 3s ease-out forwards;
+      animation-delay: var(--star-delay, 0ms);
+    }
+
+    @keyframes sparkle-star {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+      }
+      18% {
+        opacity: 0.95;
+      }
+      55% {
+        opacity: 0.7;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--star-drift-x, 0px)), calc(-50% + var(--star-drift-y, -22px))) scale(1.15) rotate(var(--star-rotate, 80deg));
+      }
+    }
+
+    .letters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .letter-pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.4);
+      background: rgba(255, 255, 255, 0.06);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .letters-one-line {
+      flex-wrap: nowrap;
+      overflow-x: hidden;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 10, 16, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 10;
+    }
+
+    .modal.is-visible {
+      display: flex;
+    }
+
+    .modal-card {
+      max-width: min(560px, 95vw);
+      background: rgba(12, 18, 28, 0.96);
+      border-radius: 16px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      padding: 20px;
+      color: #f1e9d3;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-card h3 {
+      margin: 0 0 8px;
+    }
+
+    .modal-card p {
+      margin: 0 0 10px;
+      color: #d7cfbf;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .modal-actions button {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: rgba(212, 179, 106, 0.12);
+      color: #f6e6b6;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    @keyframes answer-pulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 24px rgba(212, 179, 106, 0.26), 0 0 48px rgba(212, 179, 106, 0.12), 0 0 0 rgba(212, 179, 106, 0);
+      }
+      50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 56px rgba(212, 179, 106, 0.5), 0 0 96px rgba(212, 179, 106, 0.26), 0 0 144px rgba(212, 179, 106, 0.14);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 24px rgba(212, 179, 106, 0.26), 0 0 48px rgba(212, 179, 106, 0.12), 0 0 0 rgba(212, 179, 106, 0);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .puzzle-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .slot {
+        grid-template-columns: 40px 1fr 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="corner-link great-hall-link" href="grotezaal.html">Terug naar de Grote Zaal</a>
+
+  <div class="puzzle-shell intro-only" id="puzzleShell">
+    <header class="puzzle-header">
+      <h1>De Bibliotheek van Tijd</h1>
+      <p>
+        Tussen torenhoge boekenkasten en fluisterende pagina's bewaart deze bibliotheek meer dan alleen verhalen. Elke kroniek draagt een stukje tijd in zich, alsof de jaren zelf in het perkament zijn gevangen. Aan de oude index-tafel worden die momenten opnieuw geordend, want alleen wanneer de tijd haar juiste plaats terugvindt, durven de boeken hun geheimen prijs te geven.
+        <br /><br />
+        Kies een boek en leg het voorzichtig op de eerstvolgende lege regel van de tafel, of laat het direct op zijn plek glijden. De kronieken moeten elkaar volgen zoals tijd dat doet: van het kleinste moment naar het grootste, zonder sprongen en zonder verwisselingen. Pas wanneer de volgorde klopt en de stilte van de bibliotheek instemmend lijkt te knikken, zullen in de catalogus langzaam de letters verschijnen van het verborgen toverwoord.
+      </p>
+      <button class="start-btn" id="startPuzzle" type="button">Start de puzzel</button>
+    </header>
+
+    <div class="puzzle-grid is-hidden" id="puzzleGrid" hidden>
+      <section class="panel" aria-label="Boekenlijst">
+        <h2>Boeken</h2>
+        <div class="books" id="bookList"></div>
+      </section>
+
+      <section class="panel" aria-label="Index-tafel">
+        <h2>Index-Tafel (klein > groot)</h2>
+        <div class="index-board" id="indexBoard"></div>
+      </section>
+
+      <section class="panel" aria-label="Feedback en resultaat">
+        <h2>Feedback</h2>
+        <div id="feedback" class="feedback">Kies een boek en plaats het op de juiste plek.</div>
+        <button class="hint-btn" id="hintBtn" type="button" aria-label="Toon hint">Hint</button>
+        <button class="reset-btn" id="resetBtn" type="button" aria-label="Reset puzzel">Reset puzzel</button>
+        <div class="catalog-line" id="catalogLine">Catalogusregel: Neem de aangegeven letters uit de TITELS.</div>
+        <div class="letters letters-one-line" id="letterLine"></div>
+      </section>
+    </div>
+  </div>
+  <div class="result-panel" id="resultPanel">
+    <div class="success-stack"><div class="result-box">TEMPORA</div><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div>
+  </div>
+
+  <div class="modal" id="bookModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-card" role="document">
+      <h3 id="modalTitle"></h3>
+      <p id="modalText"></p>
+      <div class="modal-actions">
+        <button type="button" id="modalClose" aria-label="Sluit boek">Sluit</button>
+      </div>
+    </div>
+  </div>
+  <div class="magic-sparkle" id="magicSparkle" aria-hidden="true"></div>
+
+  <audio id="soundSuccess" preload="auto">
+    <source src="assets/sounds/succes.mp3" type="audio/mpeg" />
+  </audio>
+
+  <script src="assets/style/audio-fade.js"></script>
+  <script src="assets/style/timer.js"></script>
+  <script src="assets/style/progress.js"></script>
+  <script src="assets/style/room-nav.js"></script>
+  <script>
+    const STORAGE_KEY = "hp_room_library_word";
+    const ROOM2_PARAM = "r2";
+    const greatHallLinks = [...document.querySelectorAll(".great-hall-link")];
+
+    function syncGreatHallLink(extraValue = null) {
+      greatHallLinks.forEach((link) => window.HPRoomNav.syncGreatHallLink(link, ROOM2_PARAM, extraValue));
+    }
+
+    function updateOwnUrlParam(value) {
+      window.HPRoomNav.updateOwnUrlParam(ROOM2_PARAM, value);
+    }
+
+    function setProgress(key, value) {
+      window.HPProgress.set(key, value);
+      if (key === STORAGE_KEY) {
+        updateOwnUrlParam(value);
+        syncGreatHallLink(value);
+      }
+    }
+    syncGreatHallLink();
+
+    const ORDER = ["seconde", "minuut", "uur", "dag", "week", "maand", "jaar"];
+    const ROMANS = ["I", "II", "III", "IV", "V", "VI", "VII"];
+    const books = [
+      {
+        id: "seconde",
+        title: "Tovenaarshroniek",
+        timeUnit: "seconde",
+        text: "Een oogwenk duurt lang genoeg voor een vonk. Het is het knisperen tussen twee ademhalingen. De kleinste tik in de stilte.",
+      },
+      {
+        id: "minuut",
+        title: "Eerbiedige Codex",
+        timeUnit: "minuut",
+        text: "Zestig tikken rollen samen tot een korte span. In die tijd valt er net genoeg kaarsvet om een spoor te tekenen. De klok tikt zacht maar onverbiddelijk.",
+      },
+      {
+        id: "uur",
+        title: "Magische Memoires",
+        timeUnit: "uur",
+        text: "Een klokslag-cyclus scharniert de nacht. De torenklok slaat ��n keer, dan nog ��n. In die span verandert de schaduw van de kasten.",
+      },
+      {
+        id: "dag",
+        title: "Professorenkroniek",
+        timeUnit: "dag",
+        text: "Een volledige lichtcyclus sluit een ronde af: ochtend, middag, avond. Zo'n ronde brengt het stof terug op de planken. De zon verdwijnt achter de ramen.",
+      },
+      {
+        id: "week",
+        title: "Occulte Archieven",
+        timeUnit: "week",
+        text: "Zeven lichtcycli vormen een vaste schoolmaat, een kleine reis door de school. In die maat keert hetzelfde ritme terug. Zelfs spreuken rusten uit.",
+      },
+      {
+        id: "maand",
+        title: "Runenrol",
+        timeUnit: "maand",
+        text: "Een maancyclus volgt de maan. In zo'n cyclus schuiven de sterren net genoeg om een nieuw patroon te tonen. De kalender fluistert.",
+      },
+      {
+        id: "jaar",
+        title: "Archief van het Kasteel",
+        timeUnit: "jaar",
+        text: "Een volledige seizoenskring sluit zich. Het kasteel ademt winter, lente, zomer, herfst. Zo'n kring houdt de herinneringen vast.",
+      },
+      
+    ];
+
+    const booksById = Object.fromEntries(books.map((book) => [book.id, book]));
+    const bookList = document.getElementById("bookList");
+    const indexBoard = document.getElementById("indexBoard");
+    const feedback = document.getElementById("feedback");
+    const startPuzzle = document.getElementById("startPuzzle");
+    const puzzleGrid = document.getElementById("puzzleGrid");
+    const puzzleShell = document.getElementById("puzzleShell");
+    const hintBtn = document.getElementById("hintBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const catalogLine = document.getElementById("catalogLine");
+    const letterLine = document.getElementById("letterLine");
+    const resultPanel = document.getElementById("resultPanel");
+    const modal = document.getElementById("bookModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalText = document.getElementById("modalText");
+    const modalClose = document.getElementById("modalClose");
+    const magicSparkle = document.getElementById("magicSparkle");
+    const soundSuccess = document.getElementById("soundSuccess");
+    const STAR_GLYPHS = ["✦", "✧", "★"];
+    const STAR_COLORS = ["#fff7c7", "#dff7ff", "#f6e2aa", "#d0ffe8"];
+    let placements = Array(ORDER.length).fill(null);
+    let failCount = 0;
+    let sparkleTimer = null;
+
+    function playSound(audioEl) {
+      if (!audioEl) {
+        return;
+      }
+      window.CinematicAudio.play(audioEl, { fadeInMs: 420, fadeOutMs: 680, endFadeMs: 760 });
+    }
+
+    function playMagicSparkle() {
+      if (!magicSparkle) {
+        return;
+      }
+      magicSparkle.innerHTML = "";
+      for (let i = 0; i < 54; i += 1) {
+        const star = document.createElement("span");
+        star.className = "magic-star";
+        star.textContent = STAR_GLYPHS[Math.floor(Math.random() * STAR_GLYPHS.length)];
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.setProperty("--star-size", `${8 + Math.random() * 92}px`);
+        star.style.setProperty("--star-delay", `${Math.random() * 560}ms`);
+        star.style.setProperty("--star-drift-x", `${-20 + Math.random() * 40}px`);
+        star.style.setProperty("--star-drift-y", `${-42 + Math.random() * 22}px`);
+        star.style.setProperty("--star-rotate", `${-140 + Math.random() * 280}deg`);
+        star.style.setProperty("--star-color", STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)]);
+        magicSparkle.appendChild(star);
+      }
+      magicSparkle.classList.remove("is-active");
+      void magicSparkle.offsetWidth;
+      magicSparkle.classList.add("is-active");
+      if (sparkleTimer) {
+        clearTimeout(sparkleTimer);
+      }
+      sparkleTimer = setTimeout(() => {
+        magicSparkle.classList.remove("is-active");
+        magicSparkle.innerHTML = "";
+      }, 3200);
+    }
+
+    window.CinematicAudio.register(soundSuccess, {
+      volume: 0.9,
+      fadeInMs: 420,
+      fadeOutMs: 680,
+      endFadeMs: 760,
+    });
+    soundSuccess.load();
+    document.addEventListener("pointerdown", () => {
+      window.CinematicAudio.prime(soundSuccess);
+    }, { once: true });
+    document.addEventListener("keydown", () => {
+      window.CinematicAudio.prime(soundSuccess);
+    }, { once: true });
+
+    function shuffle(list) {
+      const result = [...list];
+      for (let i = result.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+
+    function buildBooks() {
+      bookList.innerHTML = "";
+      const shuffled = shuffle(books);
+      shuffled.forEach((book) => {
+        const card = document.createElement("div");
+        card.className = "book-card";
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `Open boek ${book.title}`);
+        card.draggable = true;
+        card.dataset.bookId = book.id;
+
+        const title = document.createElement("div");
+        title.innerHTML = `<div class="book-title">${book.title}</div>`;
+
+        const actions = document.createElement("div");
+        actions.className = "book-actions";
+
+        const openBtn = document.createElement("button");
+        openBtn.className = "action-btn";
+        openBtn.type = "button";
+        openBtn.textContent = "Lees";
+        openBtn.setAttribute("aria-label", `Lees ${book.title}`);
+
+        actions.appendChild(openBtn);
+
+        card.appendChild(title);
+        card.appendChild(actions);
+
+        card.addEventListener("click", (event) => {
+          if (event.target === openBtn) {
+            openModal(book);
+            return;
+          }
+          placeBookInFirstEmptySlot(book.id);
+        });
+
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            placeBookInFirstEmptySlot(book.id);
+          }
+        });
+
+        card.addEventListener("dragstart", (event) => {
+          event.dataTransfer.setData("text/plain", book.id);
+        });
+
+        bookList.appendChild(card);
+      });
+    }
+
+    function buildSlots() {
+      indexBoard.innerHTML = "";
+      ORDER.forEach((unit, index) => {
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.slotIndex = index;
+
+        const label = document.createElement("div");
+        label.className = "slot-label";
+        label.textContent = unit;
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "slot-button";
+        button.setAttribute("aria-label", `${unit} slot`);
+
+        button.innerHTML = "<span class=\"slot-empty\">Leeg</span>";
+
+        const roman = document.createElement("div");
+        roman.className = "slot-roman";
+        roman.textContent = ROMANS[index];
+
+        slot.appendChild(label);
+        slot.appendChild(button);
+        slot.appendChild(roman);
+
+
+        slot.addEventListener("dragover", (event) => {
+          event.preventDefault();
+        });
+
+        slot.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const bookId = event.dataTransfer.getData("text/plain");
+          if (!bookId) {
+            return;
+          }
+          placeBook(index, bookId);
+        });
+
+        slot.addEventListener("click", () => {
+          if (!placements[index]) {
+            return;
+          }
+          placements[index] = null;
+          updateSlot(index);
+          validateOrder();
+        });
+
+        indexBoard.appendChild(slot);
+      });
+    }
+
+    function placeBookInFirstEmptySlot(bookId) {
+      const firstEmptyIndex = placements.findIndex((slot) => !slot);
+      if (firstEmptyIndex === -1) {
+        feedback.classList.add("error");
+        feedback.classList.remove("success");
+        feedback.textContent = "De index-tafel is al vol. Reset de puzzel om opnieuw te beginnen.";
+        return;
+      }
+      placeBook(firstEmptyIndex, bookId);
+    }
+
+    function placeBook(slotIndex, bookId) {
+      if (placements.includes(bookId)) {
+        const previousIndex = placements.indexOf(bookId);
+        placements[previousIndex] = null;
+        updateSlot(previousIndex);
+      }
+
+      placements[slotIndex] = bookId;
+      updateSlot(slotIndex);
+      validateOrder();
+    }
+
+    function updateSlot(slotIndex) {
+      const slot = indexBoard.children[slotIndex];
+      const button = slot.querySelector(".slot-button");
+      const bookId = placements[slotIndex];
+
+      if (!bookId) {
+        slot.classList.remove("filled");
+        button.innerHTML = "<span class=\"slot-empty\">Leeg</span>";
+        return;
+      }
+
+      const book = booksById[bookId];
+      slot.classList.add("filled");
+      button.textContent = book.title;
+      button.setAttribute("aria-label", `${book.title} geplaatst bij ${ORDER[slotIndex]}`);
+    }
+
+    function openModal(book) {
+      modalTitle.textContent = book.title;
+      modalText.textContent = book.text;
+      modal.classList.add("is-visible");
+      modal.setAttribute("aria-hidden", "false");
+      modalClose.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove("is-visible");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function updateLetters() {
+      letterLine.innerHTML = "";
+      let collected = "";
+      placements.forEach((bookId, index) => {
+        const book = booksById[bookId];
+        if (!book) {
+          return;
+        }
+        const cleanTitle = book.title.replace(/\s+/g, "");
+        const letter = cleanTitle[0] ? cleanTitle[0].toUpperCase() : "";
+        if (letter) {
+          collected += letter;
+        }
+        const pill = document.createElement("span");
+        pill.className = "letter-pill";
+        pill.textContent = letter || "-";
+        letterLine.appendChild(pill);
+      });
+      return collected;
+    }
+
+    function isOrderCorrect() {
+      return placements.every((bookId, index) => bookId === ORDER[index]);
+    }
+
+    function validateOrder() {
+      if (placements.some((slot) => !slot)) {
+        feedback.classList.remove("error", "success");
+        feedback.textContent = "Plaats alle boeken in de index-tafel.";
+        return;
+      }
+
+      const isCorrect = isOrderCorrect();
+
+      if (!isCorrect) {
+        failCount += 1;
+        feedback.classList.add("error");
+        feedback.classList.remove("success");
+        feedback.textContent = "De index schuurt� nog niet juist.";
+        if (failCount >= 3) {
+          hintBtn.classList.add("is-visible");
+        }
+        return;
+      }
+
+      feedback.classList.remove("error");
+      feedback.classList.add("success");
+      feedback.textContent = "De index klikt vast. De catalogusregel verschijnt.";
+      catalogLine.classList.add("is-visible");
+      const collected = updateLetters();
+
+      if (collected.includes("TEMPORA")) {
+        playMagicSparkle();
+        resultPanel.classList.add("is-visible");
+        setProgress(STORAGE_KEY, "TEMPORA");
+        playSound(soundSuccess);
+      }
+    }
+
+    function revealPuzzle() {
+      puzzleGrid.classList.remove("is-hidden");
+      puzzleGrid.hidden = false;
+      puzzleShell.classList.remove("intro-only");
+      startPuzzle.hidden = true;
+      startPuzzle.style.display = "none";
+    }
+
+    function resetPuzzle(message = "Klik op een boek om het in de eerstvolgende lege regel te plaatsen.") {
+      placements = Array(ORDER.length).fill(null);
+      failCount = 0;
+      buildBooks();
+      buildSlots();
+      feedback.classList.remove("error", "success");
+      feedback.textContent = message;
+      hintBtn.classList.remove("is-visible");
+      catalogLine.classList.remove("is-visible");
+      letterLine.innerHTML = "";
+      resultPanel.classList.remove("is-visible");
+      closeModal();
+    }
+
+    hintBtn.addEventListener("click", () => {
+      feedback.textContent = "Hint: Denk aan seconde ? minuut ? uur ? dag ? week ? maand ? jaar.";
+      feedback.classList.remove("error");
+    });
+
+    resetBtn.addEventListener("click", () => {
+      resetPuzzle();
+    });
+
+    startPuzzle.addEventListener("click", () => {
+      revealPuzzle();
+    });
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeModal();
+      }
+    });
+
+    modalClose.addEventListener("click", closeModal);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    });
+
+    resetPuzzle();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

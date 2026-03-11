@@ -1,0 +1,651 @@
+<!--
+PAGINA: Grote Zaal
+DOEL: Centrale hub met hotspots naar kamers, voortgangsstatus en zandloper-uitleg.
+ROL IN DE FLOW: Komt na index; van hier naar room1-4 en terug vanuit kamers.
+PUZZELREGELS (indien van toepassing): - Room2/Room3 worden na oplossen vergrendeld; - Validatie: lockstatus op basis van progress keys en URL-params; - Succes: oplossing wordt in label getoond; - Falen: klikken op vergrendelde hotspot toont melding i.p.v. navigatie.
+EFFECTEN:
+- Animaties: 4s fade-in + center shadow reveal bij eerste binnenkomst vanaf index.
+- Geluid: assets/sounds/zandloper.wav met fallback-knop Start geluid.
+- Visuele effecten: hotspot-hover, grid overlay met coordinate tooltip, notice-popups.
+- Timers of dynamische veranderingen: grid-cursor updates via requestAnimationFrame; timer-overlay via HPTimer.
+GEBRUIKTE MEDIA:
+- Afbeeldingen: assets/images/grotezaal.jpeg.
+- Audio: assets/sounds/zandloper.wav.
+- Video: geen.
+- Externe assets: assets/style/timer.css, assets/style/timer.js, assets/style/progress.js.
+BIJZONDERHEDEN:
+- Afhankelijkheden: window.HPTimer en window.HPProgress.
+- Globale state impact: leest hp_room_library_word/hp_room_potion_word en consumeert hp_hall_intro_from_index.
+- Edge cases of technische aandachtspunten: pageshow/visibility handlers verversen locks en audio.
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grote Zaal</title>
+  <link rel="stylesheet" href="assets/style/timer.css" />
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: #0e131b;
+      color: #f3f5f7;
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+    }
+
+    .scene {
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .scene.should-fade-in {
+      opacity: 0;
+      animation: hall-fade-in 4s ease forwards;
+    }
+
+    @keyframes hall-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .center-reveal-shadow {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        radial-gradient(
+          circle at 50% 52%,
+          rgba(0, 0, 0, 0.78) 0%,
+          rgba(0, 0, 0, 0.58) 14%,
+          rgba(0, 0, 0, 0.34) 28%,
+          rgba(0, 0, 0, 0.12) 42%,
+          rgba(0, 0, 0, 0) 60%
+        );
+    }
+
+    .scene.should-fade-in .center-reveal-shadow {
+      animation: center-shadow-fade 4s ease forwards;
+    }
+
+    @keyframes center-shadow-fade {
+      0% { opacity: 1; }
+      65% { opacity: 0.35; }
+      100% { opacity: 0; }
+    }
+
+    .scene-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 999px;
+      background: #d4b36a;
+      color: #1a1306;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    #playFallback {
+      display: none;
+    }
+
+    .hotspots {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+    }
+
+    .hotspot {
+      position: absolute;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      text-decoration: none;
+      color: #f9f1d7;
+      border-radius: 12px;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .hotspot .label {
+      margin: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(10, 12, 16, 0.72);
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      font-size: clamp(0.75rem, 1.1vw, 0.95rem);
+      text-align: center;
+      transition: background-color 0.22s ease, color 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+    }
+
+    .hotspot:focus-visible,
+    .hotspot:hover {
+      box-shadow: none;
+      transform: translateY(-2px);
+    }
+
+    .hotspot:not(.hotspot-locked):focus-visible .label,
+    .hotspot:not(.hotspot-locked):hover .label {
+      background: #d4b36a;
+      color: #1a1306;
+      border-color: #d4b36a;
+      transform: scale(1.09);
+    }
+
+    .hotspot-locked {
+      cursor: not-allowed;
+    }
+
+    .hotspot-locked:focus-visible,
+    .hotspot-locked:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .hotspot-locked .label {
+      border-color: rgba(196, 140, 140, 0.7);
+    }
+
+    .hotspot-slaapzaal {
+      left: 12.5%;
+      top: 33.33%;
+      width: 6.25%;
+      height: 33.33%;
+    }
+
+    .hotspot-bibliotheek {
+      left: 28.13%;
+      top: 41.67%;
+      width: 6.25%;
+      height: 25%;
+    }
+
+    .hotspot-toverdrank {
+      left: 65.63%;
+      top: 41.67%;
+      width: 6.25%;
+      height: 25%;
+    }
+
+    .hotspot-kerker {
+      left: 81.25%;
+      top: 33.33%;
+      width: 6.25%;
+      height: 33.33%;
+    }
+
+    .hotspot-uitgang {
+      left: 43.75%;
+      top: 33.33%;
+      width: 12.5%;
+      height: 41.67%;
+    }
+
+    .exit-frame {
+      border: 0;
+      background: transparent;
+    }
+
+    .exit-frame .label {
+      display: none;
+    }
+
+    .hourglass-intro {
+      position: absolute;
+      left: 43.75%;
+      top: 33.33%;
+      width: 12.5%;
+      height: 41.67%;
+      z-index: 3;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .hourglass-intro.is-visible {
+      display: flex;
+    }
+
+    .hourglass-intro-card {
+      width: min(380px, 90vw);
+      padding: 16px 18px;
+      border-radius: 12px;
+      border: 2px solid rgba(212, 179, 106, 0.85);
+      background: rgba(10, 12, 16, 0.88);
+      color: #f6e6b6;
+      text-align: center;
+      line-height: 1.45;
+      font-size: clamp(0.82rem, 1.2vw, 1rem);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .notice-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .notice {
+      position: absolute;
+      padding: 16px 22px;
+      border-radius: 10px;
+      border: 1px solid rgba(212, 179, 106, 0.6);
+      background: rgba(0, 0, 0, 0.5);
+      color: #f6e6b6;
+      font-size: 1.1rem;
+      display: none;
+      max-width: min(520px, 90vw);
+      text-align: center;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      cursor: default;
+    }
+
+    .notice.is-visible {
+      display: inline-block;
+    }
+
+    .video-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.96);
+    }
+
+    .video-overlay.is-visible {
+      display: flex;
+    }
+
+    .video-overlay video {
+      width: min(100vw, 100%);
+      height: min(100vh, 100%);
+      object-fit: contain;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene" aria-label="Grote Zaal speelruimte">
+    <img class="scene-bg" src="assets/images/grotezaal.jpeg" alt="De Grote Zaal" />
+    <div class="center-reveal-shadow" aria-hidden="true"></div>
+
+    <div class="hotspots" aria-label="Klikbare plekken">
+      <a id="room1Hotspot" class="hotspot hotspot-slaapzaal" href="room1.html">
+        <span id="room1Label" class="label" data-base-label="Slaapzaal">Slaapzaal</span>
+      </a>
+      <a id="room2Hotspot" class="hotspot hotspot-bibliotheek" href="room2.html">
+        <span id="room2Label" class="label" data-base-label="Bibliotheek">Bibliotheek</span>
+      </a>
+      <a id="room3Hotspot" class="hotspot hotspot-toverdrank" href="room3.html">
+        <span id="room3Label" class="label" data-base-label="Toverdranklokaal">Toverdranklokaal</span>
+      </a>
+      <a id="room4Hotspot" class="hotspot hotspot-kerker" href="room4.html">
+        <span id="room4Label" class="label" data-base-label="Kerker">Kerker</span>
+      </a>
+      <button id="exitHotspot" class="hotspot hotspot-locked hotspot-uitgang exit-frame" type="button" aria-disabled="true">
+        <span class="label"></span>
+      </button>
+    </div>
+
+    <div id="hourglassIntro" class="hourglass-intro" aria-live="polite">
+      <div class="hourglass-intro-card">
+        Doorzoek de vier kamers van het kasteel en los in elke ruimte de puzzel op om een woord te verkrijgen.
+        Wanneer alle woorden zijn gevonden, kun je de spreuk uitspreken bij de zandloper in de Grote Zaal.
+      </div>
+    </div>
+
+    <div class="notice-layer" aria-hidden="true">
+      <div id="exitNotice" class="notice" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <audio id="zandloperAudio" preload="auto" autoplay playsinline>
+    <source src="assets/sounds/zandloper.wav" type="audio/wav" />
+    Je browser ondersteunt geen audio.
+  </audio>
+
+  <div id="windroseOverlay" class="video-overlay" aria-hidden="true">
+    <video id="windroseVideo" preload="auto" playsinline>
+      <source src="assets/images/windroos.mp4" type="video/mp4" />
+    </video>
+  </div>
+
+  <script src="assets/style/audio-fade.js"></script>
+  <script src="assets/style/timer.js"></script>
+  <script src="assets/style/progress.js"></script>
+  <script>
+    const HALL_FADE_KEY = "hp_hall_intro_from_index";
+    const HALL_GUIDE_TEXT = "Doorzoek de vier kamers van het kasteel en los in elke ruimte de puzzel op om een woord te verkrijgen. Wanneer alle woorden zijn gevonden, kun je de spreuk uitspreken bij de zandloper in de Grote Zaal.";
+    const ROOM1_STORAGE_KEY = "hp_room_sleep_word";
+    const ROOM1_SOLUTION = "VITREA";
+    const ROOM2_STORAGE_KEY = "hp_room_library_word";
+    const ROOM2_SOLUTION = "TEMPORA";
+    const ROOM3_STORAGE_KEY = "hp_room_potion_word";
+    const ROOM3_SOLUTION = "CONFRINGO";
+    const ROOM4_STORAGE_KEY = "hp_room_dungeon_word";
+    const ROOM4_SOLUTION = "REVELIO";
+    const ROOM1_PARAM = "r1";
+    const ROOM2_PARAM = "r2";
+    const ROOM3_PARAM = "r3";
+    const ROOM4_PARAM = "r4";
+    const WINDROSE_DELAY_MS = 3000;
+    let windroseSequenceQueued = false;
+
+
+    function storageKeyToParam(key) {
+      if (key === ROOM1_STORAGE_KEY) {
+        return ROOM1_PARAM;
+      }
+      if (key === ROOM2_STORAGE_KEY) {
+        return ROOM2_PARAM;
+      }
+      if (key === ROOM3_STORAGE_KEY) {
+        return ROOM3_PARAM;
+      }
+      if (key === ROOM4_STORAGE_KEY) {
+        return ROOM4_PARAM;
+      }
+      return null;
+    }
+
+    function getProgressFromUrl(key) {
+      try {
+        const param = storageKeyToParam(key);
+        if (!param) {
+          return null;
+        }
+        const params = new URLSearchParams(window.location.search || "");
+        const value = params.get(param);
+        return value && value.length > 0 ? value : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function getProgress(key) {
+      const value = window.HPProgress.get(key);
+      if (value) {
+        return value;
+      }
+      return getProgressFromUrl(key);
+    }
+
+    function buildRoomHref(roomFile) {
+      const params = new URLSearchParams(window.location.search || "");
+      const room1 = getProgress(ROOM1_STORAGE_KEY);
+      const room2 = getProgress(ROOM2_STORAGE_KEY);
+      const room3 = getProgress(ROOM3_STORAGE_KEY);
+      const room4 = getProgress(ROOM4_STORAGE_KEY);
+      if (room1 === ROOM1_SOLUTION) {
+        params.set(ROOM1_PARAM, ROOM1_SOLUTION);
+      }
+      if (room2 === ROOM2_SOLUTION) {
+        params.set(ROOM2_PARAM, ROOM2_SOLUTION);
+      }
+      if (room3 === ROOM3_SOLUTION) {
+        params.set(ROOM3_PARAM, ROOM3_SOLUTION);
+      }
+      if (room4 === ROOM4_SOLUTION) {
+        params.set(ROOM4_PARAM, ROOM4_SOLUTION);
+      }
+      const query = params.toString();
+      return query ? `${roomFile}?${query}` : roomFile;
+    }
+
+    const audio = document.getElementById("zandloperAudio");
+    const scene = document.querySelector(".scene");
+    const hourglassIntro = document.getElementById("hourglassIntro");
+    const exitHotspot = document.getElementById("exitHotspot");
+    const exitNotice = document.getElementById("exitNotice");
+    const room1Hotspot = document.getElementById("room1Hotspot");
+    const room2Hotspot = document.getElementById("room2Hotspot");
+    const room3Hotspot = document.getElementById("room3Hotspot");
+    const room4Hotspot = document.getElementById("room4Hotspot");
+    const windroseOverlay = document.getElementById("windroseOverlay");
+    const windroseVideo = document.getElementById("windroseVideo");
+    const room1Label = document.getElementById("room1Label");
+    const room2Label = document.getElementById("room2Label");
+    const room3Label = document.getElementById("room3Label");
+    const room4Label = document.getElementById("room4Label");
+    let isAudioPrimed = false;
+    let windroseTimerId = 0;
+
+    window.CinematicAudio.register(audio, {
+      volume: 0.72,
+      fadeInMs: 1800,
+      fadeOutMs: 2200,
+      endFadeMs: 2600,
+    });
+
+    function showNoticeAt(target, message) {
+      const rect = target.getBoundingClientRect();
+      const sceneRect = scene.getBoundingClientRect();
+      const centerX = rect.left - sceneRect.left + rect.width / 2;
+      const centerY = rect.top - sceneRect.top + rect.height / 2;
+      exitNotice.textContent = message;
+      exitNotice.style.left = `${(centerX / sceneRect.width) * 100}%`;
+      exitNotice.style.top = `${(centerY / sceneRect.height) * 100}%`;
+      exitNotice.classList.add("is-visible");
+    }
+
+    function setRoomLockState(hotspot, label, isSolved, solutionWord) {
+      const baseLabel = label.dataset.baseLabel || label.textContent;
+      label.dataset.baseLabel = baseLabel;
+
+      if (isSolved) {
+        hotspot.classList.add("hotspot-locked");
+        hotspot.setAttribute("aria-disabled", "true");
+        hotspot.tabIndex = 0;
+        hotspot.dataset.solutionWord = solutionWord;
+        if (hotspot.hasAttribute("href")) {
+          hotspot.dataset.href = hotspot.getAttribute("href");
+          hotspot.removeAttribute("href");
+        }
+        label.textContent = `${baseLabel} (${solutionWord})`;
+      } else {
+        hotspot.classList.remove("hotspot-locked");
+        hotspot.setAttribute("aria-disabled", "false");
+        hotspot.removeAttribute("tabindex");
+        delete hotspot.dataset.solutionWord;
+        if (!hotspot.hasAttribute("href") && hotspot.dataset.href) {
+          hotspot.setAttribute("href", hotspot.dataset.href);
+        }
+        label.textContent = baseLabel;
+      }
+    }
+
+    function bindSolvedRoomNotice(hotspot) {
+      if (hotspot.dataset.lockNoticeBound === "1") {
+        return;
+      }
+      hotspot.addEventListener("click", (event) => {
+        if (!hotspot.classList.contains("hotspot-locked")) {
+          return;
+        }
+        event.preventDefault();
+        const solution = hotspot.dataset.solutionWord || "onbekend";
+        showNoticeAt(hotspot, `Deze kamer is al voltooid (${solution}).`);
+      });
+      hotspot.addEventListener("keydown", (event) => {
+        if (!hotspot.classList.contains("hotspot-locked")) {
+          return;
+        }
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        const solution = hotspot.dataset.solutionWord || "onbekend";
+        showNoticeAt(hotspot, `Deze kamer is al voltooid (${solution}).`);
+      });
+      hotspot.dataset.lockNoticeBound = "1";
+    }
+
+    function updateSolvedRoomLocks() {
+      room1Hotspot.href = buildRoomHref("room1.html");
+      room2Hotspot.href = buildRoomHref("room2.html");
+      room3Hotspot.href = buildRoomHref("room3.html");
+      room4Hotspot.href = buildRoomHref("room4.html");
+      const room1Solved = getProgress(ROOM1_STORAGE_KEY) === ROOM1_SOLUTION;
+      const room2Solved = getProgress(ROOM2_STORAGE_KEY) === ROOM2_SOLUTION;
+      const room3Solved = getProgress(ROOM3_STORAGE_KEY) === ROOM3_SOLUTION;
+      const room4Solved = getProgress(ROOM4_STORAGE_KEY) === ROOM4_SOLUTION;
+      setRoomLockState(room1Hotspot, room1Label, room1Solved, ROOM1_SOLUTION);
+      setRoomLockState(room2Hotspot, room2Label, room2Solved, ROOM2_SOLUTION);
+      setRoomLockState(room3Hotspot, room3Label, room3Solved, ROOM3_SOLUTION);
+      setRoomLockState(room4Hotspot, room4Label, room4Solved, ROOM4_SOLUTION);
+    }
+
+    function areAllRoomsSolved() {
+      return (
+        getProgress(ROOM1_STORAGE_KEY) === ROOM1_SOLUTION &&
+        getProgress(ROOM2_STORAGE_KEY) === ROOM2_SOLUTION &&
+        getProgress(ROOM3_STORAGE_KEY) === ROOM3_SOLUTION &&
+        getProgress(ROOM4_STORAGE_KEY) === ROOM4_SOLUTION
+      );
+    }
+
+    async function startWindroseSequence() {
+      if (!windroseOverlay || !windroseVideo) {
+        window.location.href = "room5.html";
+        return;
+      }
+      stopAudio();
+      exitNotice.classList.remove("is-visible");
+      windroseOverlay.classList.add("is-visible");
+      windroseOverlay.setAttribute("aria-hidden", "false");
+      windroseVideo.currentTime = 0;
+      windroseVideo.muted = false;
+      try {
+        await windroseVideo.play();
+      } catch (_) {
+        try {
+          windroseVideo.muted = true;
+          await windroseVideo.play();
+        } catch (_) {
+          window.location.href = "room5.html";
+        }
+      }
+    }
+
+    function queueWindroseIfReady() {
+      if (windroseTimerId || windroseSequenceQueued || windroseOverlay.classList.contains("is-visible") || !areAllRoomsSolved()) {
+        return;
+      }
+      windroseSequenceQueued = true;
+      windroseTimerId = window.setTimeout(() => {
+        windroseTimerId = 0;
+        startWindroseSequence();
+      }, WINDROSE_DELAY_MS);
+    }
+
+    function evaluateHallCompletion() {
+      updateSolvedRoomLocks();
+      if (!areAllRoomsSolved()) {
+        if (windroseTimerId) {
+          window.clearTimeout(windroseTimerId);
+          windroseTimerId = 0;
+        }
+        windroseSequenceQueued = false;
+        return;
+      }
+      queueWindroseIfReady();
+    }
+
+    bindSolvedRoomNotice(room1Hotspot);
+    bindSolvedRoomNotice(room2Hotspot);
+    bindSolvedRoomNotice(room3Hotspot);
+    bindSolvedRoomNotice(room4Hotspot);
+    evaluateHallCompletion();
+
+    exitHotspot.addEventListener("mouseenter", () => {
+      showNoticeAt(exitHotspot, HALL_GUIDE_TEXT);
+    });
+    exitHotspot.addEventListener("mouseleave", () => {
+      exitNotice.classList.remove("is-visible");
+    });
+    exitHotspot.addEventListener("focus", () => {
+      showNoticeAt(exitHotspot, HALL_GUIDE_TEXT);
+    });
+    exitHotspot.addEventListener("blur", () => {
+      exitNotice.classList.remove("is-visible");
+    });
+    exitNotice.addEventListener("click", () => {
+      exitNotice.classList.remove("is-visible");
+    });
+    windroseVideo.addEventListener("ended", () => {
+      window.location.href = "room5.html";
+    });
+
+    async function startAudio() {
+      if (windroseOverlay.classList.contains("is-visible")) {
+        return;
+      }
+      try {
+        if (!isAudioPrimed) {
+          window.CinematicAudio.prime(audio);
+          isAudioPrimed = true;
+        }
+        const didStart = await window.CinematicAudio.play(audio, {
+          restart: false,
+          fadeInMs: 1800,
+        });
+      } catch (_) {
+      }
+    }
+
+    function stopAudio() {
+      window.CinematicAudio.stop(audio, {
+        fadeOutMs: 2200,
+        resetTime: false,
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", startAudio);
+    window.addEventListener("DOMContentLoaded", evaluateHallCompletion);
+    window.addEventListener("pageshow", evaluateHallCompletion);
+    window.addEventListener("pageshow", startAudio);
+    window.addEventListener("focus", evaluateHallCompletion);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        startAudio();
+        evaluateHallCompletion();
+      } else {
+        stopAudio();
+      }
+    });
+    window.addEventListener("pagehide", stopAudio);
+    document.addEventListener("pointerdown", startAudio, { once: true });
+    document.addEventListener("keydown", startAudio, { once: true });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Het Mysterie van Zweinstein</title>
+  <link rel="stylesheet" href="assets/style/timer.css" />
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: rgba(14, 24, 37, 0.92);
+      --text: #f2f4f8;
+      --muted: #c9d1db;
+      --accent: #d4b36a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+      overflow: hidden;
+    }
+
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .scene::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: url("assets/images/kasteel.png");
+      background-position: 44% 34%;
+      background-size: cover;
+      background-repeat: no-repeat;
+      transform-origin: 52% 90%;
+      transform: scale(1);
+      opacity: 1;
+      transition: transform 3s ease, opacity 900ms ease;
+      z-index: 0;
+    }
+
+    .scene.zoom-to-gate::before {
+      transform: scale(2.255);
+    }
+
+    .scene.video-blend::before {
+      opacity: 0;
+    }
+
+    #introPanel {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(5, 9, 14, 0.5);
+      cursor: pointer;
+      z-index: 3;
+      padding: 24px;
+    }
+
+    .intro-card {
+      width: min(900px, 100%);
+      background: var(--panel);
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      transform: scale(0.75);
+      transform-origin: center center;
+    }
+
+    .intro-card h1 {
+      margin: 0 0 18px;
+      letter-spacing: 0.06em;
+      line-height: 1.2;
+      text-align: center;
+      font-size: clamp(1.5rem, 2.4vw, 2.2rem);
+      color: var(--accent);
+    }
+
+    .intro-card p {
+      margin: 0;
+      white-space: pre-line;
+      line-height: 1.6;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .difficulty-wrap {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .difficulty-wrap label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.4);
+      background: rgba(255, 255, 255, 0.03);
+      color: #ece2c9;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.95rem;
+    }
+
+    .intro-hint {
+      margin-top: 16px;
+      text-align: center;
+      color: #e9dec3;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    #gateVideo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 900ms ease;
+      background: #000;
+      z-index: 1;
+    }
+
+    #gateVideo.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    #continueWrap {
+      position: absolute;
+      inset: auto 0 40px;
+      display: none;
+      justify-content: center;
+      z-index: 4;
+    }
+
+    #continueBtn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #1a1306;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+
+    #continueBtn:hover {
+      filter: brightness(1.06);
+    }
+  </style>
+</head>
+<body>
+  <main class="scene">
+    <section id="introPanel" aria-label="Introductie">
+      <article class="intro-card" id="introCard">
+        <h1>HET MYSTERIE VAN ZWEINSTEIN</h1>
+        <p>Wanneer de nacht over Zweinstein valt en de maan het kasteel in zilver doopt, ademt elke gang een oud geheim. Echo's van voetstappen sterven weg, hout kraakt onder eeuwenoude balken, en fijn stof danst in lange schaduwen langs hoge ramen. Hier fluistert magie nog zacht, wachtend op wie durft te luisteren.
+
+Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is spoorloos verdwenen. Zonder haar verzwakt het hart van het kasteel, en deuren die nooit sluiten beginnen onrustig te bewegen. Zoek snel, want de zandloper in de Grote Zaal is al gekeerd.</p>
+
+        <div class="difficulty-wrap" id="difficultyWrap">
+          <label><input type="radio" name="difficulty" value="test" /> Test (1 min)</label>
+          <label><input type="radio" name="difficulty" value="expert" /> Expert (20 min)</label>
+          <label><input type="radio" name="difficulty" value="normaal" checked /> Normaal (40 min)</label>
+          <label><input type="radio" name="difficulty" value="makkelijk" /> Makkelijk (60 min)</label>
+        </div>
+
+        <div class="intro-hint">Klik op dit scherm om te beginnen</div>
+      </article>
+    </section>
+
+    <video id="gateVideo" preload="auto" playsinline>
+      <source src="assets/images/poort.mp4" type="video/mp4" />
+      Je browser ondersteunt geen HTML5-video.
+    </video>
+
+    <div id="continueWrap">
+      <button id="continueBtn" type="button">Ga door naar de Grote Zaal</button>
+    </div>
+  </main>
+
+  <script src="assets/style/timer.js"></script>
+  <script src="assets/style/progress.js"></script>
+  <script>
+    const HALL_FADE_KEY = "hp_hall_intro_from_index";
+    const ROOM2_STORAGE_KEY = "hp_room_library_word";
+    const ROOM3_STORAGE_KEY = "hp_room_potion_word";
+    const INTRO_ZOOM_MS = 3000;
+    const scene = document.querySelector(".scene");
+    const introPanel = document.getElementById("introPanel");
+    const difficultyWrap = document.getElementById("difficultyWrap");
+    const gateVideo = document.getElementById("gateVideo");
+    const continueWrap = document.getElementById("continueWrap");
+    const continueBtn = document.getElementById("continueBtn");
+    let started = false;
+    let continueCountdownInterval = null;
+    let hasNavigated = false;
+    function clearContinueCountdown() {
+      if (continueCountdownInterval) {
+        clearInterval(continueCountdownInterval);
+        continueCountdownInterval = null;
+      }
+    }
+    function goToGreatHall() {
+      if (hasNavigated) {
+        return;
+      }
+      hasNavigated = true;
+      clearContinueCountdown();
+      try {
+        sessionStorage.setItem(HALL_FADE_KEY, "1");
+      } catch (_) {}
+      window.location.href = "grotezaal.html";
+    }
+    function startContinueCountdown(seconds = 4) {
+      clearContinueCountdown();
+      continueWrap.style.display = "flex";
+      let remaining = seconds;
+      continueBtn.textContent = "Ga door naar de Grote Zaal (" + remaining + ")";
+      continueCountdownInterval = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          goToGreatHall();
+          return;
+        }
+        continueBtn.textContent = "Ga door naar de Grote Zaal (" + remaining + ")";
+      }, 1000);
+    }
+    window.HPTimer.clearTimer();
+    window.HPTimer.renderTimer();
+    difficultyWrap.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    introPanel.addEventListener("click", async () => {
+      if (started) {
+        return;
+      }
+      started = true;
+      const selected = document.querySelector('input[name="difficulty"]:checked');
+      const modeKey = selected ? selected.value : "normaal";
+      // Nieuwe speelsessie: reset opgeloste kamerstatussen.
+      window.HPProgress.remove(ROOM2_STORAGE_KEY);
+      window.HPProgress.remove(ROOM3_STORAGE_KEY);
+      window.HPTimer.startTimer(modeKey);
+      window.HPTimer.renderTimer();
+      introPanel.style.display = "none";
+      scene.classList.add("zoom-to-gate");
+      await new Promise((resolve) => setTimeout(resolve, INTRO_ZOOM_MS));
+      try {
+        await gateVideo.play();
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        requestAnimationFrame(() => {
+          scene.classList.add("video-blend");
+          gateVideo.classList.add("visible");
+        });
+      } catch (err) {
+        console.error("Video kon niet starten:", err);
+        gateVideo.classList.remove("visible");
+        scene.classList.remove("video-blend");
+        startContinueCountdown(3);
+      }
+    });
+    gateVideo.addEventListener("ended", () => {
+      startContinueCountdown(3);
+    });
+    continueBtn.addEventListener("click", goToGreatHall);
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

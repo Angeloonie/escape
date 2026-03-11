@@ -1,0 +1,82 @@
+<!--
+PAGINA: Uitgang
+DOEL: Eindscherm van route met link om opnieuw te starten vanaf index.
+ROL IN DE FLOW: Eindpunt na spelroute; navigeert terug naar index.html voor nieuwe sessie.
+PUZZELREGELS (indien van toepassing): - Geen puzzel; - Validatie: n.v.t.; - Succes: n.v.t.; - Falen: n.v.t.
+EFFECTEN:
+- Animaties: geen.
+- Geluid: geen.
+- Visuele effecten: statisch eindpaneel met nadruk op herstartlink.
+- Timers of dynamische veranderingen: alleen globale timer-overlay via HPTimer.
+GEBRUIKTE MEDIA:
+- Afbeeldingen: geen expliciete afbeelding.
+- Audio: geen.
+- Video: geen.
+- Externe assets: assets/style/timer.css, assets/style/timer.js.
+BIJZONDERHEDEN:
+- Afhankelijkheden: window.HPTimer.
+- Globale state impact: geen extra opslag op deze pagina.
+- Edge cases of technische aandachtspunten: herstartlink verwacht dat timer/progress elders opnieuw wordt gezet.
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Uitgang</title>
+  <link rel="stylesheet" href="assets/style/timer.css" />
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0b111a;
+      color: #eff3f8;
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+    }
+
+    main {
+      text-align: center;
+      max-width: 600px;
+      padding: 24px;
+      border: 1px solid rgba(212, 179, 106, 0.4);
+      border-radius: 12px;
+      background: rgba(11, 17, 26, 0.65);
+    }
+
+    a {
+      color: #d4b36a;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 2.4vw, 2.2rem);
+      color: #f7ead2;
+    }
+
+    p {
+      margin: 0 0 12px;
+      line-height: 1.6;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+      color: #e6ddc8;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Uitgang</h1>
+    <p>Einde van deze route.</p>
+    <p><a href="index.html">Opnieuw starten</a></p>
+  </main>
+  <script src="assets/style/timer.js"></script>
+</body>
+</html>
+
+
+
+
+
+
