@@ -65,7 +65,7 @@
       display: grid;
       place-items: center;
       background: rgba(5, 9, 14, 0.5);
-      cursor: pointer;
+      cursor: default;
       z-index: 3;
       padding: 24px;
     }
@@ -120,12 +120,10 @@
       font-size: 0.95rem;
     }
 
-    .intro-hint {
+    .intro-actions {
       margin-top: 16px;
-      text-align: center;
-      color: #e9dec3;
-      font-size: 0.95rem;
-      opacity: 0.9;
+      display: flex;
+      justify-content: center;
     }
 
     #gateVideo {
@@ -154,6 +152,7 @@
       z-index: 4;
     }
 
+    .primary-btn,
     #continueBtn {
       border: 0;
       border-radius: 999px;
@@ -166,6 +165,7 @@
       box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
     }
 
+    .primary-btn:hover,
     #continueBtn:hover {
       filter: brightness(1.06);
     }
@@ -187,7 +187,9 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
           <label><input type="radio" name="difficulty" value="makkelijk" /> Makkelijk (30 min)</label>
         </div>
 
-        <div class="intro-hint">Klik op dit scherm om te beginnen</div>
+        <div class="intro-actions">
+          <button id="startBtn" class="primary-btn" type="button">Begin het avontuur</button>
+        </div>
       </article>
     </section>
 
@@ -197,7 +199,7 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     </video>
 
     <div id="continueWrap">
-      <button id="continueBtn" type="button">Ga door naar de Grote Zaal</button>
+      <button id="continueBtn" type="button">Start de puzzel</button>
     </div>
   </main>
 
@@ -213,6 +215,7 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     const scene = document.querySelector(".scene");
     const introPanel = document.getElementById("introPanel");
     const difficultyWrap = document.getElementById("difficultyWrap");
+    const startBtn = document.getElementById("startBtn");
     const gateVideo = document.getElementById("gateVideo");
     const continueWrap = document.getElementById("continueWrap");
     const continueBtn = document.getElementById("continueBtn");
@@ -239,23 +242,27 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     function startContinueCountdown(seconds = 4) {
       clearContinueCountdown();
       continueWrap.style.display = "flex";
-      let remaining = seconds;
-      continueBtn.textContent = "Ga door naar de Grote Zaal (" + remaining + ")";
-      continueCountdownInterval = setInterval(() => {
-        remaining -= 1;
-        if (remaining <= 0) {
+      const endsAt = Date.now() + seconds * 1000;
+      function renderCountdown() {
+        const remainingMs = Math.max(0, endsAt - Date.now());
+        const remaining = (remainingMs / 1000).toFixed(1);
+        continueBtn.textContent = "Start de puzzel (" + remaining + ")";
+        if (remainingMs <= 0) {
           goToGreatHall();
-          return;
         }
-        continueBtn.textContent = "Ga door naar de Grote Zaal (" + remaining + ")";
-      }, 1000);
+      }
+      renderCountdown();
+      continueCountdownInterval = setInterval(() => {
+        renderCountdown();
+      }, 100);
     }
     window.HPTimer.clearTimer();
     window.HPTimer.renderTimer();
     difficultyWrap.addEventListener("click", (event) => {
       event.stopPropagation();
     });
-    introPanel.addEventListener("click", async () => {
+    startBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
       if (started) {
         return;
       }
