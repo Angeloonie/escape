@@ -213,7 +213,7 @@ BIJZONDERHEDEN:
       display: none;
       align-items: center;
       justify-content: center;
-      pointer-events: none;
+      pointer-events: auto;
     }
 
     .hourglass-intro.is-visible {
@@ -231,6 +231,7 @@ BIJZONDERHEDEN:
       line-height: 1.45;
       font-size: clamp(0.82rem, 1.2vw, 1rem);
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
     }
 
     .notice-layer {
@@ -446,6 +447,20 @@ BIJZONDERHEDEN:
       exitNotice.classList.add("is-visible");
     }
 
+    function showHourglassIntro() {
+      if (!hourglassIntro) {
+        return;
+      }
+      hourglassIntro.classList.add("is-visible");
+    }
+
+    function hideHourglassIntro() {
+      if (!hourglassIntro) {
+        return;
+      }
+      hourglassIntro.classList.remove("is-visible");
+    }
+
     function setRoomLockState(hotspot, label, isSolved, solutionWord) {
       const baseLabel = label.dataset.baseLabel || label.textContent;
       label.dataset.baseLabel = baseLabel;
@@ -574,14 +589,19 @@ BIJZONDERHEDEN:
     bindSolvedRoomNotice(room3Hotspot);
     bindSolvedRoomNotice(room4Hotspot);
     evaluateHallCompletion();
+    showHourglassIntro();
+
+    hourglassIntro.addEventListener("click", hideHourglassIntro);
 
     exitHotspot.addEventListener("mouseenter", () => {
+      hideHourglassIntro();
       showNoticeAt(exitHotspot, HALL_GUIDE_TEXT);
     });
     exitHotspot.addEventListener("mouseleave", () => {
       exitNotice.classList.remove("is-visible");
     });
     exitHotspot.addEventListener("focus", () => {
+      hideHourglassIntro();
       showNoticeAt(exitHotspot, HALL_GUIDE_TEXT);
     });
     exitHotspot.addEventListener("blur", () => {
@@ -620,8 +640,10 @@ BIJZONDERHEDEN:
 
     window.addEventListener("DOMContentLoaded", startAudio);
     window.addEventListener("DOMContentLoaded", evaluateHallCompletion);
+    window.addEventListener("DOMContentLoaded", showHourglassIntro);
     window.addEventListener("pageshow", evaluateHallCompletion);
     window.addEventListener("pageshow", startAudio);
+    window.addEventListener("pageshow", showHourglassIntro);
     window.addEventListener("focus", evaluateHallCompletion);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
