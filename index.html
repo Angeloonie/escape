@@ -211,6 +211,7 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     const ROOM2_STORAGE_KEY = "hp_room_library_word";
     const ROOM3_STORAGE_KEY = "hp_room_potion_word";
     const ROOM4_STORAGE_KEY = "hp_room_dungeon_word";
+    const HALL_INTRO_DISMISSED_KEY = "hp_hall_hourglass_intro_dismissed_v1";
     const INTRO_ZOOM_MS = 3000;
     const scene = document.querySelector(".scene");
     const introPanel = document.getElementById("introPanel");
@@ -222,6 +223,7 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     let started = false;
     let continueCountdownInterval = null;
     let hasNavigated = false;
+    let pendingModeKey = "normaal";
     function clearContinueCountdown() {
       if (continueCountdownInterval) {
         clearInterval(continueCountdownInterval);
@@ -234,6 +236,8 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
       }
       hasNavigated = true;
       clearContinueCountdown();
+      window.HPTimer.startTimer(pendingModeKey);
+      window.HPTimer.renderTimer();
       try {
         sessionStorage.setItem(HALL_FADE_KEY, "1");
       } catch (_) {}
@@ -268,14 +272,15 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
       }
       started = true;
       const selected = document.querySelector('input[name="difficulty"]:checked');
-      const modeKey = selected ? selected.value : "normaal";
+      pendingModeKey = selected ? selected.value : "normaal";
       // Nieuwe speelsessie: reset opgeloste kamerstatussen.
       window.HPProgress.remove(ROOM1_STORAGE_KEY);
       window.HPProgress.remove(ROOM2_STORAGE_KEY);
       window.HPProgress.remove(ROOM3_STORAGE_KEY);
       window.HPProgress.remove(ROOM4_STORAGE_KEY);
-      window.HPTimer.startTimer(modeKey);
-      window.HPTimer.renderTimer();
+      try {
+        sessionStorage.removeItem(HALL_INTRO_DISMISSED_KEY);
+      } catch (_) {}
       introPanel.style.display = "none";
       scene.classList.add("zoom-to-gate");
       await new Promise((resolve) => setTimeout(resolve, INTRO_ZOOM_MS));

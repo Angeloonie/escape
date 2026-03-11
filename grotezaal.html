@@ -334,6 +334,7 @@ BIJZONDERHEDEN:
   <script src="assets/style/progress.js"></script>
   <script>
     const HALL_FADE_KEY = "hp_hall_intro_from_index";
+    const HALL_INTRO_DISMISSED_KEY = "hp_hall_hourglass_intro_dismissed_v1";
     const HALL_GUIDE_TEXT = "Doorzoek de vier kamers van het kasteel en los in elke ruimte de puzzel op om een woord te verkrijgen. Wanneer alle woorden zijn gevonden, kun je de spreuk uitspreken bij de zandloper in de Grote Zaal.";
     const ROOM1_STORAGE_KEY = "hp_room_sleep_word";
     const ROOM1_SOLUTION = "VITREA";
@@ -451,6 +452,11 @@ BIJZONDERHEDEN:
       if (!hourglassIntro) {
         return;
       }
+      try {
+        if (sessionStorage.getItem(HALL_INTRO_DISMISSED_KEY) === "1") {
+          return;
+        }
+      } catch (_) {}
       hourglassIntro.classList.add("is-visible");
     }
 
@@ -459,6 +465,13 @@ BIJZONDERHEDEN:
         return;
       }
       hourglassIntro.classList.remove("is-visible");
+    }
+
+    function dismissHourglassIntro() {
+      hideHourglassIntro();
+      try {
+        sessionStorage.setItem(HALL_INTRO_DISMISSED_KEY, "1");
+      } catch (_) {}
     }
 
     function setRoomLockState(hotspot, label, isSolved, solutionWord) {
@@ -591,17 +604,17 @@ BIJZONDERHEDEN:
     evaluateHallCompletion();
     showHourglassIntro();
 
-    hourglassIntro.addEventListener("click", hideHourglassIntro);
+    hourglassIntro.addEventListener("click", dismissHourglassIntro);
 
     exitHotspot.addEventListener("mouseenter", () => {
-      hideHourglassIntro();
+      dismissHourglassIntro();
       showNoticeAt(exitHotspot, HALL_GUIDE_TEXT);
     });
     exitHotspot.addEventListener("mouseleave", () => {
       exitNotice.classList.remove("is-visible");
     });
     exitHotspot.addEventListener("focus", () => {
-      hideHourglassIntro();
+      dismissHourglassIntro();
       showNoticeAt(exitHotspot, HALL_GUIDE_TEXT);
     });
     exitHotspot.addEventListener("blur", () => {
