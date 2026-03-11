@@ -3,9 +3,9 @@
   const WINDOW_NAME_KEY = "__hp_escape_timer_v1__";
   const DIFFICULTIES = {
     test: { label: "Test", minutes: 1 },
-    expert: { label: "Expert", minutes: 20 },
-    normaal: { label: "Normaal", minutes: 40 },
-    makkelijk: { label: "Makkelijk", minutes: 60 }
+    expert: { label: "Expert", minutes: 10 },
+    normaal: { label: "Normaal", minutes: 20 },
+    makkelijk: { label: "Makkelijk", minutes: 30 }
   };
 
   function readWindowNameBag() {
