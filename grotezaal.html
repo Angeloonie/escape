@@ -205,10 +205,11 @@ BIJZONDERHEDEN:
 
     .hourglass-intro {
       position: absolute;
-      left: 43.75%;
+      left: 50%;
       top: 33.33%;
-      width: 12.5%;
+      width: min(570px, 90vw);
       height: 41.67%;
+      transform: translateX(-50%);
       z-index: 3;
       display: none;
       align-items: center;
@@ -221,7 +222,8 @@ BIJZONDERHEDEN:
     }
 
     .hourglass-intro-card {
-      width: min(380px, 90vw);
+      position: relative;
+      width: min(570px, 90vw);
       padding: 16px 18px;
       border-radius: 12px;
       border: 2px solid rgba(212, 179, 106, 0.85);
@@ -232,6 +234,31 @@ BIJZONDERHEDEN:
       font-size: clamp(0.82rem, 1.2vw, 1rem);
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
       cursor: pointer;
+    }
+
+    .hourglass-intro-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.65);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f6e6b6;
+      font: inherit;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .hourglass-intro-close:hover,
+    .hourglass-intro-close:focus-visible {
+      background: rgba(212, 179, 106, 0.18);
+      outline: none;
     }
 
     .notice-layer {
@@ -308,6 +335,7 @@ BIJZONDERHEDEN:
 
     <div id="hourglassIntro" class="hourglass-intro" aria-live="polite">
       <div class="hourglass-intro-card">
+        <button id="hourglassIntroClose" class="hourglass-intro-close" type="button" aria-label="Sluiten">x</button>
         Doorzoek de vier kamers van het kasteel en los in elke ruimte de puzzel op om een woord te verkrijgen.
         Wanneer alle woorden zijn gevonden, kun je de spreuk uitspreken bij de zandloper in de Grote Zaal.
       </div>
@@ -415,6 +443,7 @@ BIJZONDERHEDEN:
     const audio = document.getElementById("zandloperAudio");
     const scene = document.querySelector(".scene");
     const hourglassIntro = document.getElementById("hourglassIntro");
+    const hourglassIntroClose = document.getElementById("hourglassIntroClose");
     const exitHotspot = document.getElementById("exitHotspot");
     const exitNotice = document.getElementById("exitNotice");
     const room1Hotspot = document.getElementById("room1Hotspot");
@@ -605,6 +634,10 @@ BIJZONDERHEDEN:
     showHourglassIntro();
 
     hourglassIntro.addEventListener("click", dismissHourglassIntro);
+    hourglassIntroClose.addEventListener("click", (event) => {
+      event.stopPropagation();
+      dismissHourglassIntro();
+    });
 
     exitHotspot.addEventListener("mouseenter", () => {
       dismissHourglassIntro();
