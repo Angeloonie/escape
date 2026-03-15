@@ -181,10 +181,9 @@
 Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is spoorloos verdwenen. Zonder haar verzwakt het hart van het kasteel, en deuren die nooit sluiten beginnen onrustig te bewegen. Zoek snel, want de zandloper in de Grote Zaal is al gekeerd.</p>
 
         <div class="difficulty-wrap" id="difficultyWrap">
-          <label><input type="radio" name="difficulty" value="test" /> Test (1 min)</label>
-          <label><input type="radio" name="difficulty" value="expert" /> Expert (10 min)</label>
-          <label><input type="radio" name="difficulty" value="normaal" checked /> Normaal (20 min)</label>
-          <label><input type="radio" name="difficulty" value="makkelijk" /> Makkelijk (30 min)</label>
+          <label><input type="radio" name="difficulty" value="expert" /> Expert (15 min)</label>
+          <label><input type="radio" name="difficulty" value="normaal" checked /> Normaal (25 min)</label>
+          <label><input type="radio" name="difficulty" value="makkelijk" /> Makkelijk (35 min)</label>
         </div>
 
         <div class="intro-actions">
@@ -211,6 +210,7 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     const ROOM2_STORAGE_KEY = "hp_room_library_word";
     const ROOM3_STORAGE_KEY = "hp_room_potion_word";
     const ROOM4_STORAGE_KEY = "hp_room_dungeon_word";
+    const FINISH_STORAGE_KEY = "hp_escape_finished_elapsed_ms_v1";
     const HALL_INTRO_DISMISSED_KEY = "hp_hall_hourglass_intro_dismissed_v1";
     const INTRO_ZOOM_MS = 3000;
     const scene = document.querySelector(".scene");
@@ -262,6 +262,12 @@ Maar vannacht is er meer verloren dan stilte: een toverstok, ooit onmisbaar, is 
     }
     window.HPTimer.clearTimer();
     window.HPTimer.renderTimer();
+    try {
+      sessionStorage.removeItem(FINISH_STORAGE_KEY);
+    } catch (_) {}
+    try {
+      localStorage.removeItem(FINISH_STORAGE_KEY);
+    } catch (_) {}
     difficultyWrap.addEventListener("click", (event) => {
       event.stopPropagation();
     });
