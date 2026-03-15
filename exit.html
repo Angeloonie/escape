@@ -4,26 +4,26 @@ DOEL: Eindscherm van route met link om opnieuw te starten vanaf index.
 ROL IN DE FLOW: Eindpunt na spelroute; navigeert terug naar index.html voor nieuwe sessie.
 PUZZELREGELS (indien van toepassing): - Geen puzzel; - Validatie: n.v.t.; - Succes: n.v.t.; - Falen: n.v.t.
 EFFECTEN:
-- Animaties: geen.
+- Animaties: decoratieve sterren en vuurwerklaag op de achtergrond.
 - Geluid: geen.
-- Visuele effecten: statisch eindpaneel met nadruk op herstartlink.
-- Timers of dynamische veranderingen: alleen globale timer-overlay via HPTimer.
+- Visuele effecten: achtergrondbeeld, beloningsafbeelding en feestanimatie.
+- Timers of dynamische veranderingen: toont behaalde eindtijd in het tekstkader.
 GEBRUIKTE MEDIA:
-- Afbeeldingen: geen expliciete afbeelding.
+- Afbeeldingen: assets/images/toverstok.png, assets/images/magischebeloning.png.
 - Audio: geen.
 - Video: geen.
-- Externe assets: assets/style/timer.css, assets/style/timer.js.
+- Externe assets: geen.
 BIJZONDERHEDEN:
-- Afhankelijkheden: window.HPTimer.
-- Globale state impact: geen extra opslag op deze pagina.
-- Edge cases of technische aandachtspunten: herstartlink verwacht dat timer/progress elders opnieuw wordt gezet.
+- Afhankelijkheden: leest opgeslagen timerstate en finish-tijd uit browseropslag.
+- Globale state impact: gebruikt opgeslagen timerinformatie voor weergave van behaalde tijd.
+- Edge cases of technische aandachtspunten: toont "onbekend" als timerdata of finish-tijd ontbreekt.
 -->
 <!doctype html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Uitgang</title>
+  <title>De Ban Vebroken!</title>
   <style>
     body {
       margin: 0;
@@ -116,6 +116,7 @@ BIJZONDERHEDEN:
   <script>
     (function () {
       const STORAGE_KEY = "hp_escape_timer_v1";
+      const FINISH_STORAGE_KEY = "hp_escape_finished_elapsed_ms_v1";
       const WINDOW_NAME_KEY = "__hp_escape_timer_v1__";
       const timeResult = document.getElementById("timeResult");
       const celebrationLayer = document.getElementById("celebrationLayer");
@@ -175,15 +176,32 @@ BIJZONDERHEDEN:
         return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
       }
 
+      function readFinishedElapsedMs() {
+        try {
+          const sessionValue = sessionStorage.getItem(FINISH_STORAGE_KEY);
+          if (sessionValue) {
+            return Number(sessionValue);
+          }
+        } catch (_) {}
+
+        try {
+          const localValue = localStorage.getItem(FINISH_STORAGE_KEY);
+          if (localValue) {
+            return Number(localValue);
+          }
+        } catch (_) {}
+
+        return null;
+      }
+
       const state = readState();
-      if (!state) {
+      const finishedElapsedMs = readFinishedElapsedMs();
+      if (!state || !Number.isFinite(finishedElapsedMs)) {
         timeResult.textContent = "Behaalde tijd: onbekend";
         return;
       }
 
-      const finishedAt = Date.now();
-      const elapsedMs = finishedAt - state.startedAt;
-      timeResult.textContent = "Behaalde tijd: " + formatMs(elapsedMs);
+      timeResult.textContent = "Behaalde tijd: " + formatMs(finishedElapsedMs);
     })();
 
     (function () {

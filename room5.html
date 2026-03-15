@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Room 5 - Eindpuzel</title>
+  <title>De Laatste Sloten</title>
   <style>
     :root {
       --panel: rgba(10, 15, 25, 0.82);
       --text: #eef2f7;
       --accent: #d4b36a;
       --shadow: rgba(0, 0, 0, 0.58);
-      --line: rgba(255, 233, 189, 0.42);
-      --line-strong: rgba(255, 219, 152, 0.8);
       --success: #a7ffdd;
       --error: #ffb6b6;
     }
@@ -40,24 +38,6 @@
       margin: 0;
     }
 
-    .controls {
-      position: fixed;
-      top: 18px;
-      left: 18px;
-      z-index: 6;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 12px 16px;
-      background: rgba(18, 12, 8, 0.82);
-      border: 1px solid rgba(212, 179, 106, 0.32);
-      border-radius: 16px;
-      box-shadow: 0 14px 36px var(--shadow);
-      backdrop-filter: blur(8px);
-    }
-
-    .toggle,
     .reset-btn {
       padding: 8px 12px;
       border-radius: 999px;
@@ -67,21 +47,6 @@
       font-weight: 700;
       font-family: inherit;
       cursor: pointer;
-    }
-
-    .toggle {
-      border: 1px solid rgba(212, 179, 106, 0.45);
-      background: linear-gradient(180deg, rgba(73, 46, 20, 0.96), rgba(40, 25, 11, 0.96));
-      color: #f7edda;
-      border-radius: 999px;
-      padding: 10px 16px;
-      font: inherit;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
-    }
-
-    .status {
-      color: rgba(248, 240, 223, 0.82);
-      font-size: 0.95rem;
     }
 
     .scene-wrap {
@@ -165,6 +130,12 @@
       bottom: 48px;
       transform: translateX(-50%);
       width: min(90vw, 680px);
+      padding: 18px 22px;
+      border-radius: 18px;
+      border: 1px solid rgba(212, 179, 106, 0.35);
+      background: rgba(10, 15, 25, 0.78);
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(8px);
       text-align: center;
       color: #f4e8cc;
       text-shadow: 0 2px 14px rgba(0, 0, 0, 0.65);
@@ -182,17 +153,13 @@
       color: #e6ddc8;
     }
 
-    .controls,
     .hud,
-    .grid-layer,
     .pieces-layer,
     .target-zone {
       transition: opacity 900ms ease, visibility 900ms ease;
     }
 
-    body.is-exiting .controls,
     body.is-exiting .hud,
-    body.is-exiting .grid-layer,
     body.is-exiting .pieces-layer,
     body.is-exiting .target-zone {
       opacity: 0;
@@ -278,64 +245,6 @@
       color: #dcfff1;
     }
 
-    .grid-layer {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      grid-template-columns: 40px repeat(26, 1fr);
-      grid-template-rows: 40px repeat(26, 1fr);
-      pointer-events: none;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 180ms ease;
-      z-index: 4;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.14));
-    }
-
-    .grid-layer.is-visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .corner,
-    .col-label,
-    .row-label,
-    .cell {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-    }
-
-    .corner {
-      background: rgba(10, 6, 4, 0.68);
-      border-right: 1px solid var(--line-strong);
-      border-bottom: 1px solid var(--line-strong);
-    }
-
-    .col-label,
-    .row-label {
-      background: rgba(10, 6, 4, 0.68);
-      color: #fff0cb;
-      font-size: clamp(0.55rem, 1vw, 0.8rem);
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      border-right: 1px solid var(--line-strong);
-      border-bottom: 1px solid var(--line-strong);
-    }
-
-    .cell {
-      border-right: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      color: rgba(255, 244, 220, 0.36);
-      font-size: clamp(0.4rem, 0.7vw, 0.58rem);
-      font-weight: 700;
-    }
-
-    .cell:nth-child(odd) {
-      background: rgba(255, 235, 201, 0.03);
-    }
-
     .target-zone {
       position: fixed;
       width: 11%;
@@ -347,12 +256,6 @@
       transform: translate(-50%, -50%);
       transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
       z-index: 3;
-    }
-
-    .scene-wrap.grid-on .target-zone {
-      border-color: rgba(255, 241, 208, 0.82);
-      background: rgba(255, 229, 178, 0.14);
-      box-shadow: 0 0 0 10px rgba(255, 229, 182, 0.04), inset 0 0 0 1px rgba(255, 241, 208, 0.22);
     }
 
     .target-zone.is-hover {
@@ -441,11 +344,6 @@
         padding: 12px;
       }
 
-      .controls {
-        top: 12px;
-        left: 12px;
-      }
-
       .hud {
         top: 16px;
         right: 16px;
@@ -456,11 +354,6 @@
 
       .instruction-card {
         padding: 0;
-      }
-
-      .grid-layer {
-        grid-template-columns: 32px repeat(26, 1fr);
-        grid-template-rows: 32px repeat(26, 1fr);
       }
 
       .target-zone {
@@ -479,11 +372,6 @@
 </head>
 <body>
   <main class="page">
-    <div class="controls">
-      <button class="toggle" id="gridToggle" type="button" aria-pressed="false">Grid tonen</button>
-      <div class="status" id="gridStatus">Grid staat uit</div>
-    </div>
-
     <section class="scene-wrap" id="scene">
       <img class="board-image" id="boardImage" src="assets/images/eindpuzzel.png" alt="Eindpuzel achtergrond" />
       <video class="transition-video" id="transitionVideo" preload="auto" playsinline aria-hidden="true">
@@ -512,17 +400,15 @@
         </div>
       </aside>
 
-      <div class="grid-layer" id="gridLayer" aria-hidden="true"></div>
       <div class="pieces-layer" id="piecesLayer"></div>
     </section>
   </main>
 
   <script>
-    const letters = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
+    const TIMER_STORAGE_KEY = "hp_escape_timer_v1";
+    const FINISH_STORAGE_KEY = "hp_escape_finished_elapsed_ms_v1";
+    const WINDOW_NAME_KEY = "__hp_escape_timer_v1__";
     const scene = document.getElementById("scene");
-    const gridLayer = document.getElementById("gridLayer");
-    const gridToggle = document.getElementById("gridToggle");
-    const gridStatus = document.getElementById("gridStatus");
     const resetBtn = document.getElementById("resetBtn");
     const piecesLayer = document.getElementById("piecesLayer");
     const feedback = document.getElementById("feedback");
@@ -552,52 +438,60 @@
     const IMAGE_HEIGHT = 768;
     let solved = false;
     let audioContext = null;
-    let gridVisible = false;
     let resetTimeoutId = null;
     let exitTimeoutId = null;
     let countdownIntervalId = null;
 
-    function buildGrid() {
-      const fragment = document.createDocumentFragment();
-      const corner = document.createElement("div");
-      corner.className = "corner";
-      fragment.appendChild(corner);
-
-      letters.forEach((letter, index) => {
-        const col = document.createElement("div");
-        col.className = "col-label";
-        col.style.gridColumn = String(index + 2);
-        col.textContent = letter;
-        fragment.appendChild(col);
-      });
-
-      for (let row = 1; row <= 26; row += 1) {
-        const rowLabel = document.createElement("div");
-        rowLabel.className = "row-label";
-        rowLabel.style.gridRow = String(row + 1);
-        rowLabel.textContent = row;
-        fragment.appendChild(rowLabel);
-
-        letters.forEach((letter, index) => {
-          const cell = document.createElement("div");
-          cell.className = "cell";
-          cell.style.gridColumn = String(index + 2);
-          cell.style.gridRow = String(row + 1);
-          cell.textContent = letter + row;
-          fragment.appendChild(cell);
-        });
+    function readWindowNameBag() {
+      try {
+        const raw = window.name || "";
+        if (!raw) {
+          return {};
+        }
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (_) {
+        return {};
       }
-
-      gridLayer.replaceChildren(fragment);
     }
 
-    function setGridState(isVisible) {
-      gridVisible = isVisible;
-      gridLayer.classList.toggle("is-visible", isVisible);
-      scene.classList.toggle("grid-on", isVisible);
-      gridToggle.setAttribute("aria-pressed", String(isVisible));
-      gridToggle.textContent = isVisible ? "Grid verbergen" : "Grid tonen";
-      gridStatus.textContent = isVisible ? "Grid staat aan" : "Grid staat uit";
+    function readTimerState() {
+      try {
+        const sessionRaw = sessionStorage.getItem(TIMER_STORAGE_KEY);
+        if (sessionRaw) {
+          return JSON.parse(sessionRaw);
+        }
+      } catch (_) {}
+
+      try {
+        const localRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (localRaw) {
+          return JSON.parse(localRaw);
+        }
+      } catch (_) {}
+
+      try {
+        const bag = readWindowNameBag();
+        if (typeof bag[WINDOW_NAME_KEY] === "string") {
+          return JSON.parse(bag[WINDOW_NAME_KEY]);
+        }
+      } catch (_) {}
+
+      return null;
+    }
+
+    function storeFinishedElapsedTime() {
+      const state = readTimerState();
+      if (!state || !state.startedAt) {
+        return;
+      }
+      const elapsedMs = Math.max(0, Date.now() - state.startedAt);
+      try {
+        sessionStorage.setItem(FINISH_STORAGE_KEY, String(elapsedMs));
+      } catch (_) {}
+      try {
+        localStorage.setItem(FINISH_STORAGE_KEY, String(elapsedMs));
+      } catch (_) {}
     }
 
     function setFeedback(message, state = "") {
@@ -932,7 +826,7 @@
       transitionVideo.currentTime = 0;
       finalScreen.classList.remove("is-visible");
       finalScreen.setAttribute("aria-hidden", "true");
-      finalCountdown.textContent = "Nog 5 seconden...";
+      finalCountdown.textContent = "Nog 7,5 seconden...";
       pieces.forEach((entry) => {
         entry.placed = false;
         entry.element.classList.remove("is-placed", "is-dragging");
@@ -1006,6 +900,7 @@
     function solvePuzzle() {
       solved = true;
       playSuccess();
+      storeFinishedElapsedTime();
       document.body.classList.add("is-exiting");
       exitTimeoutId = window.setTimeout(() => {
         document.body.classList.add("is-video-playing");
@@ -1027,25 +922,29 @@
       window.location.href = "exit.html";
     }
 
+    function formatCountdown(seconds) {
+      return seconds.toFixed(1).replace(".", ",");
+    }
+
     function showFinalScreen() {
-      let remainingSeconds = 5;
+      let remainingSeconds = 7.5;
       transitionVideo.classList.remove("is-visible");
       transitionVideo.setAttribute("aria-hidden", "true");
       transitionVideo.pause();
       finalScreen.classList.add("is-visible");
       finalScreen.setAttribute("aria-hidden", "false");
-      finalCountdown.textContent = "Nog 5 seconden...";
+      finalCountdown.textContent = "Nog " + formatCountdown(remainingSeconds) + " seconden...";
 
       countdownIntervalId = window.setInterval(() => {
-        remainingSeconds -= 1;
+        remainingSeconds = Math.max(0, remainingSeconds - 0.1);
         if (remainingSeconds <= 0) {
           window.clearInterval(countdownIntervalId);
           countdownIntervalId = null;
           goToExitPage();
           return;
         }
-        finalCountdown.textContent = "Nog " + remainingSeconds + " seconden...";
-      }, 1000);
+        finalCountdown.textContent = "Nog " + formatCountdown(remainingSeconds) + " seconden...";
+      }, 100);
     }
 
     boardImage.addEventListener("error", () => {
@@ -1059,20 +958,12 @@
     transitionVideo.addEventListener("error", () => {
       showFinalScreen();
     });
-
-
-    gridToggle.addEventListener("click", () => {
-      setGridState(!gridVisible);
-    });
-
     resetBtn.addEventListener("click", resetPuzzle);
     scene.addEventListener("pointerdown", ensureAudioContext, { once: true });
     window.addEventListener("resize", syncLayoutToImage);
 
-    buildGrid();
     createTargets();
     createPieces();
-    setGridState(false);
     resetPuzzle();
     syncLayoutToImage();
   </script>
