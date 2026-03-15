@@ -349,24 +349,6 @@
       z-index: 3;
     }
 
-    .target-zone::after {
-      content: attr(data-label);
-      position: absolute;
-      left: 50%;
-      top: calc(100% + 8px);
-      transform: translateX(-50%);
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(14, 9, 7, 0.82);
-      border: 1px solid rgba(212, 179, 106, 0.28);
-      color: #f8ecd4;
-      font-size: 0.78rem;
-      letter-spacing: 0.04em;
-      white-space: nowrap;
-      pointer-events: none;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
-    }
-
     .scene-wrap.grid-on .target-zone {
       border-color: rgba(255, 241, 208, 0.82);
       background: rgba(255, 229, 178, 0.14);
@@ -558,10 +540,10 @@
     ];
 
     const targets = [
-      { id: "top-left", x: 33.6539, y: 48.0769, size: 7.8, label: "REVELIO" },
-      { id: "top-right", x: 64.4231, y: 48.0769, size: 7.8, label: "VITREA" },
-      { id: "bottom-left", x: 30.7692, y: 63.4615, size: 7.8, label: "CONFRINGO" },
-      { id: "bottom-right", x: 67.3077, y: 63.4615, size: 7.8, label: "TEMPORA" }
+      { id: "top-left", x: 33.6539, y: 48.0769, size: 7.8 },
+      { id: "top-right", x: 64.4231, y: 48.0769, size: 7.8 },
+      { id: "bottom-left", x: 30.7692, y: 63.4615, size: 7.8 },
+      { id: "bottom-right", x: 67.3077, y: 63.4615, size: 7.8 }
     ];
 
     const pieces = new Map();
@@ -634,7 +616,6 @@
         const zone = document.createElement("div");
         zone.className = "target-zone";
         zone.dataset.targetId = target.id;
-        zone.dataset.label = target.label;
         zone.dataset.locked = "false";
         scene.appendChild(zone);
         targetElements.set(target.id, zone);
