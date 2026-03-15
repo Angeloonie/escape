@@ -84,11 +84,13 @@ button,input{font:inherit}
 .btn{border:1px solid rgba(255,229,179,.22);border-radius:999px;background:rgba(255,239,210,.06);color:#f7e7c5;padding:10px 16px;cursor:pointer;transition:transform .18s ease,background-color .18s ease,box-shadow .18s ease}
 .btn:hover,.btn:focus-visible{outline:none;transform:translateY(-1px);background:rgba(255,239,210,.1);box-shadow:0 0 16px rgba(242,201,116,.18)}
 .btn.primary{background:linear-gradient(180deg,rgba(171,122,58,.32),rgba(96,58,26,.3))}
-.success-card{width:min(780px,100%);border-radius:30px;padding:clamp(24px,4vw,42px);background:radial-gradient(circle at top,rgba(157,244,209,.22),transparent 34%),linear-gradient(180deg,rgba(9,24,21,.95),rgba(7,13,12,.98));border:1px solid rgba(146,239,201,.28);box-shadow:0 0 26px rgba(146,239,201,.18),0 24px 80px rgba(0,0,0,.55);text-align:center;position:relative;overflow:hidden}
+.success-card{width:min(680px,100%);border-radius:26px;padding:clamp(20px,3.2vw,32px);background:radial-gradient(circle at top,rgba(157,244,209,.22),transparent 34%),linear-gradient(180deg,rgba(9,24,21,.95),rgba(7,13,12,.98));border:1px solid rgba(146,239,201,.28);box-shadow:0 0 26px rgba(146,239,201,.18),0 24px 80px rgba(0,0,0,.55);text-align:center;position:relative;overflow:hidden}
 .ring{position:absolute;inset:12% 18%;border-radius:50%;border:1px solid rgba(163,246,211,.16);box-shadow:0 0 0 8px rgba(163,246,211,.03),0 0 42px rgba(163,246,211,.16);animation:pulse 2.8s ease-in-out infinite;pointer-events:none}
-.word{margin:0 0 16px;font-size:clamp(2.7rem,8vw,5.4rem);letter-spacing:.34em;text-indent:.34em;color:#e8fff1;text-shadow:0 0 14px rgba(146,239,201,.45),0 0 34px rgba(146,239,201,.24);opacity:0;transform:scale(.94);animation:reveal .9s .18s forwards}
+.word{margin:0 0 14px;font-size:clamp(2.2rem,6.8vw,4.4rem);letter-spacing:.28em;text-indent:.28em;color:#e8fff1;text-shadow:0 0 14px rgba(146,239,201,.45),0 0 34px rgba(146,239,201,.24);opacity:0;transform:scale(.94);animation:reveal .9s .18s forwards}
 .line{width:min(360px,90%);height:1px;margin:0 auto 18px;background:linear-gradient(90deg,transparent,rgba(227,255,240,.72),transparent);opacity:0;animation:fade .7s .32s forwards}
 .quote{margin:0;white-space:pre-line;color:#dff8e7;line-height:1.6;font-size:clamp(1.1rem,2.2vw,1.45rem);opacity:0;animation:fade .8s .48s forwards}
+.reward-piece{display:block;width:min(150px,32vw);margin:16px auto 10px;object-fit:contain;filter:drop-shadow(0 12px 20px rgba(0,0,0,.35));opacity:0;animation:fade .8s .58s forwards}
+.reward-note{margin:0;color:#dff8e7;line-height:1.5;font-size:clamp(.95rem,1.6vw,1.08rem);opacity:0;animation:fade .8s .66s forwards}
 .close-success{margin-top:24px}
 @keyframes pulse{0%,100%{transform:scale(.98);opacity:.55}50%{transform:scale(1.02);opacity:.95}}
 @keyframes windowPulse{0%,100%{box-shadow:0 0 0 2px rgba(245,223,186,.18),0 0 16px rgba(255,214,129,.18)}50%{box-shadow:0 0 0 2px rgba(245,223,186,.38),0 0 30px rgba(255,214,129,.42)}}
@@ -117,7 +119,7 @@ button,input{font:inherit}
 </section></div></main>
 <div class="overlay" id="overlay" aria-hidden="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h2 id="mTitle"></h2><p id="mLead"></p><div id="mBody"></div><div class="actions" id="mActions"><button class="btn" type="button" id="closeModal">Sluiten</button></div></section></div>
 <div class="success" id="success" aria-hidden="true"><div class="success-panel"><section class="success-card" role="dialog" aria-modal="true" aria-labelledby="successWord"><div class="ring" aria-hidden="true"></div><h2 class="word" id="successWord">VITREA</h2><div class="line" aria-hidden="true"></div><p class="quote">"Alleen wie de huizen verenigt,
-ziet door het glas van waarheid."</p><button class="btn close-success" type="button" id="closeSuccess">Sluiten</button></section><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div></div>
+ ziet door het glas van waarheid."</p><img class="reward-piece" src="assets/images/room5_VITREA.png" alt="Cilinder VITREA voor De Laatste Sloten" /><p class="reward-note">Deze cilinder hoort bij De Laatste Sloten.</p><button class="btn close-success" type="button" id="closeSuccess">Sluiten</button></section><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div></div>
 <script src="assets/style/timer.js"></script>
 <script src="assets/style/progress.js"></script>
 <script src="assets/style/room-nav.js"></script>

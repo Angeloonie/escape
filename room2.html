@@ -368,17 +368,33 @@ BIJZONDERHEDEN:
     }
 
     .result-box {
-      padding: 48px 60px;
-      border-radius: 32px;
+      padding: 38px 48px;
+      border-radius: 26px;
       border: 1px solid rgba(212, 179, 106, 0.75);
       background: rgba(20, 66, 42, 0.82);
       color: #f6e6b6;
       font-weight: 700;
       text-align: center;
-      font-size: clamp(2.2rem, 4vw, 3.2rem);
+      font-size: clamp(1.9rem, 3.4vw, 2.8rem);
       letter-spacing: 0.16em;
       animation: answer-pulse 2.6s ease-in-out infinite;
       transform-origin: center;
+    }
+
+    .reward-piece {
+      display: block;
+      width: min(150px, 32vw);
+      margin: 16px auto 10px;
+      object-fit: contain;
+      filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.35));
+    }
+
+    .reward-note {
+      margin: 0;
+      color: #e8f7ef;
+      line-height: 1.5;
+      font-size: clamp(0.95rem, 1.6vw, 1.08rem);
+      text-align: center;
     }
 
     .magic-sparkle {
@@ -561,7 +577,7 @@ BIJZONDERHEDEN:
     </div>
   </div>
   <div class="result-panel" id="resultPanel">
-    <div class="success-stack"><div class="result-box">TEMPORA</div><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div>
+    <div class="success-stack"><div class="result-box">TEMPORA</div><img class="reward-piece" src="assets/images/room5_TEMPORUM.png" alt="Cilinder TEMPORA voor De Laatste Sloten" /><p class="reward-note">Deze cilinder hoort bij De Laatste Sloten.</p><a class="corner-link great-hall-link success-return" href="grotezaal.html">Terug naar de Grote Zaal</a></div>
   </div>
 
   <div class="modal" id="bookModal" role="dialog" aria-modal="true" aria-hidden="true">
