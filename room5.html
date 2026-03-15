@@ -1,0 +1,1122 @@
+﻿<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room 5 - Eindpuzel</title>
+  <style>
+    :root {
+      --panel: rgba(10, 15, 25, 0.82);
+      --text: #eef2f7;
+      --accent: #d4b36a;
+      --shadow: rgba(0, 0, 0, 0.58);
+      --line: rgba(255, 233, 189, 0.42);
+      --line-strong: rgba(255, 219, 152, 0.8);
+      --success: #a7ffdd;
+      --error: #ffb6b6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      color: var(--text);
+      font-family: "Cormorant Garamond", "Times New Roman", serif;
+      background:
+        linear-gradient(rgba(8, 5, 4, 0.42), rgba(8, 5, 4, 0.58)),
+        url("assets/images/eindpuzzel.png") center center / cover no-repeat fixed;
+    }
+
+    body {
+      padding: 18px;
+    }
+
+    .page {
+      width: 100%;
+      margin: 0;
+    }
+
+    .controls {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      background: rgba(18, 12, 8, 0.82);
+      border: 1px solid rgba(212, 179, 106, 0.32);
+      border-radius: 16px;
+      box-shadow: 0 14px 36px var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .toggle,
+    .reset-btn {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 179, 106, 0.7);
+      background: rgba(212, 179, 106, 0.16);
+      color: #f6e6b6;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .toggle {
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      background: linear-gradient(180deg, rgba(73, 46, 20, 0.96), rgba(40, 25, 11, 0.96));
+      color: #f7edda;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font: inherit;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+    }
+
+    .status {
+      color: rgba(248, 240, 223, 0.82);
+      font-size: 0.95rem;
+    }
+
+    .scene-wrap {
+      position: relative;
+      border-radius: 0;
+      overflow: visible;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      aspect-ratio: 16 / 9;
+      min-height: calc(100vh - 120px);
+      backdrop-filter: none;
+    }
+
+    .board-image {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .board-image {
+      opacity: 0.001;
+      pointer-events: none;
+      transition: opacity 2200ms ease;
+    }
+
+    .transition-video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 2200ms ease, visibility 2200ms ease;
+      z-index: 99;
+    }
+
+    .transition-video.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .final-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
+      background: rgba(5, 4, 3, 0.88);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 1800ms ease, visibility 1800ms ease;
+      z-index: 100;
+    }
+
+    .final-screen.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .final-screen img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .final-caption {
+      position: absolute;
+      left: 50%;
+      bottom: 48px;
+      transform: translateX(-50%);
+      width: min(90vw, 680px);
+      text-align: center;
+      color: #f4e8cc;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.65);
+    }
+
+    .final-caption p {
+      margin: 0;
+      font-size: clamp(1.2rem, 2vw, 1.8rem);
+      letter-spacing: 0.03em;
+    }
+
+    .final-countdown {
+      margin-top: 8px;
+      font-size: clamp(1rem, 1.4vw, 1.15rem);
+      color: #e6ddc8;
+    }
+
+    .controls,
+    .hud,
+    .grid-layer,
+    .pieces-layer,
+    .target-zone {
+      transition: opacity 900ms ease, visibility 900ms ease;
+    }
+
+    body.is-exiting .controls,
+    body.is-exiting .hud,
+    body.is-exiting .grid-layer,
+    body.is-exiting .pieces-layer,
+    body.is-exiting .target-zone {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    body.is-video-playing .board-image {
+      opacity: 1;
+    }
+
+    body.is-video-playing.video-faded .board-image {
+      opacity: 0.18;
+    }
+
+    .hud {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      z-index: 25;
+      width: min(533px, 92vw);
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: var(--panel);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+      transform: scale(0.75);
+      transform-origin: top right;
+    }
+
+    .instruction-card {
+      padding: 0;
+    }
+
+    .instruction-card h1 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      color: #f4e8cc;
+      letter-spacing: 0.02em;
+    }
+
+    .instruction-card p {
+      margin: 0 0 12px;
+      color: #c7c1b1;
+      line-height: 1.6;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    }
+
+    .hud-divider {
+      height: 1px;
+      margin: 12px 0;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .feedback-pill {
+      min-width: 0;
+      width: 100%;
+      min-height: 24px;
+      margin-top: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #d8dfec;
+      font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+
+    .feedback-pill.is-error {
+      border-color: rgba(255, 182, 182, 0.55);
+      color: #ffe0e0;
+    }
+
+    .feedback-pill.is-success {
+      border-color: rgba(167, 255, 221, 0.55);
+      color: #dcfff1;
+    }
+
+    .grid-layer {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 40px repeat(26, 1fr);
+      grid-template-rows: 40px repeat(26, 1fr);
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 180ms ease;
+      z-index: 4;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.14));
+    }
+
+    .grid-layer.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .corner,
+    .col-label,
+    .row-label,
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
+
+    .corner {
+      background: rgba(10, 6, 4, 0.68);
+      border-right: 1px solid var(--line-strong);
+      border-bottom: 1px solid var(--line-strong);
+    }
+
+    .col-label,
+    .row-label {
+      background: rgba(10, 6, 4, 0.68);
+      color: #fff0cb;
+      font-size: clamp(0.55rem, 1vw, 0.8rem);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border-right: 1px solid var(--line-strong);
+      border-bottom: 1px solid var(--line-strong);
+    }
+
+    .cell {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: rgba(255, 244, 220, 0.36);
+      font-size: clamp(0.4rem, 0.7vw, 0.58rem);
+      font-weight: 700;
+    }
+
+    .cell:nth-child(odd) {
+      background: rgba(255, 235, 201, 0.03);
+    }
+
+    .target-zone {
+      position: fixed;
+      width: 11%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 2px dashed rgba(255, 228, 175, 0.42);
+      background: rgba(255, 229, 178, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(255, 241, 208, 0.12);
+      transform: translate(-50%, -50%);
+      transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+      z-index: 3;
+    }
+
+    .target-zone::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 8px);
+      transform: translateX(-50%);
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(14, 9, 7, 0.82);
+      border: 1px solid rgba(212, 179, 106, 0.28);
+      color: #f8ecd4;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .scene-wrap.grid-on .target-zone {
+      border-color: rgba(255, 241, 208, 0.82);
+      background: rgba(255, 229, 178, 0.14);
+      box-shadow: 0 0 0 10px rgba(255, 229, 182, 0.04), inset 0 0 0 1px rgba(255, 241, 208, 0.22);
+    }
+
+    .target-zone.is-hover {
+      border-color: rgba(255, 241, 208, 0.86);
+      background: rgba(255, 230, 184, 0.12);
+      box-shadow: 0 0 0 10px rgba(255, 229, 182, 0.04);
+    }
+
+    .target-zone.is-locked {
+      border-color: rgba(167, 255, 221, 0.6);
+      background: rgba(167, 255, 221, 0.08);
+    }
+
+    .pieces-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+    }
+
+    .piece {
+      position: fixed;
+      width: clamp(78px, 10vw, 132px);
+      aspect-ratio: 1 / 1;
+      touch-action: none;
+      user-select: none;
+      cursor: grab;
+      filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.34));
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .piece img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .piece.is-dragging {
+      cursor: grabbing;
+      transform: scale(1.06);
+      filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.45));
+      z-index: 8;
+    }
+
+    .piece.is-placed {
+      cursor: default;
+      transition: left 220ms ease, top 220ms ease, width 220ms ease, transform 120ms ease;
+    }
+
+    .piece-label {
+      position: fixed;
+      left: 50%;
+      bottom: -18px;
+      transform: translateX(-50%);
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(14, 9, 7, 0.78);
+      border: 1px solid rgba(212, 179, 106, 0.28);
+      color: #f8ecd4;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .media-error {
+      display: none;
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(34, 14, 10, 0.92);
+      border: 1px solid rgba(255, 182, 182, 0.45);
+      color: #ffe0e0;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+    }
+
+    .media-error.is-visible {
+      display: block;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        padding: 12px;
+      }
+
+      .controls {
+        top: 12px;
+        left: 12px;
+      }
+
+      .hud {
+        top: 16px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+        transform-origin: top left;
+      }
+
+      .instruction-card {
+        padding: 0;
+      }
+
+      .grid-layer {
+        grid-template-columns: 32px repeat(26, 1fr);
+        grid-template-rows: 32px repeat(26, 1fr);
+      }
+
+      .target-zone {
+        width: 13%;
+      }
+
+      .piece {
+        width: clamp(70px, 16vw, 108px);
+      }
+
+      .scene-wrap {
+        min-height: calc(100vh - 110px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="controls">
+      <button class="toggle" id="gridToggle" type="button" aria-pressed="false">Grid tonen</button>
+      <div class="status" id="gridStatus">Grid staat uit</div>
+    </div>
+
+    <section class="scene-wrap" id="scene">
+      <img class="board-image" id="boardImage" src="assets/images/eindpuzzel.png" alt="Eindpuzel achtergrond" />
+      <video class="transition-video" id="transitionVideo" preload="auto" playsinline aria-hidden="true">
+        <source src="assets/images/naarexit.mp4" type="video/mp4" />
+      </video>
+      <div class="final-screen" id="finalScreen" aria-hidden="true">
+        <img src="assets/images/toverstok.png" alt="Toverstok" />
+        <div class="final-caption">
+          <p>We verlaten het kasteel</p>
+          <div class="final-countdown" id="finalCountdown">Nog 3 seconden...</div>
+        </div>
+      </div>
+
+      <aside class="hud" aria-label="Opdracht en status">
+        <div class="instruction-card">
+          <h1>De Laatste Sloten</h1>
+          <p>
+            De vier spreuken horen in de tand der tijds geplaatst te zijn. Alleen wanneer alle spreuken op hun ware plaats rusten, breek je de ban van het glas, komt de toverstok vrij en ontsnap je uit dit kasteel.
+          </p>
+          <div class="hud-divider" aria-hidden="true"></div>
+          <div class="feedback-pill" id="feedback">Sleep de vier cilinders naar de juiste gaten in de steen.</div>
+          <div class="hud-actions">
+            <button class="reset-btn" id="resetBtn" type="button">Reset cilinders</button>
+          </div>
+          <div class="media-error" id="mediaError"></div>
+        </div>
+      </aside>
+
+      <div class="grid-layer" id="gridLayer" aria-hidden="true"></div>
+      <div class="pieces-layer" id="piecesLayer"></div>
+    </section>
+  </main>
+
+  <script>
+    const letters = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
+    const scene = document.getElementById("scene");
+    const gridLayer = document.getElementById("gridLayer");
+    const gridToggle = document.getElementById("gridToggle");
+    const gridStatus = document.getElementById("gridStatus");
+    const resetBtn = document.getElementById("resetBtn");
+    const piecesLayer = document.getElementById("piecesLayer");
+    const feedback = document.getElementById("feedback");
+    const boardImage = document.getElementById("boardImage");
+    const mediaError = document.getElementById("mediaError");
+    const transitionVideo = document.getElementById("transitionVideo");
+    const finalScreen = document.getElementById("finalScreen");
+    const finalCountdown = document.getElementById("finalCountdown");
+
+    const pieceConfigs = [
+      { id: "TEMPORA", src: "assets/images/room5_TEMPORUM.png", home: { x: 16, y: 14 }, targetId: "bottom-right", label: "TEMPORA" },
+      { id: "REVELIO", src: "assets/images/room5_REVELIO.png", home: { x: 16, y: 32 }, targetId: "top-left", label: "REVELIO" },
+      { id: "VITREA", src: "assets/images/room5_VITREA.png", home: { x: 16, y: 50 }, targetId: "top-right", label: "VITREA" },
+      { id: "CONFRINGO", src: "assets/images/room5_CONFRIGO.png", home: { x: 16, y: 68 }, targetId: "bottom-left", label: "CONFRINGO" }
+    ];
+
+    const targets = [
+      { id: "top-left", x: 33.6539, y: 48.0769, size: 7.8, label: "REVELIO" },
+      { id: "top-right", x: 64.4231, y: 48.0769, size: 7.8, label: "VITREA" },
+      { id: "bottom-left", x: 30.7692, y: 63.4615, size: 7.8, label: "CONFRINGO" },
+      { id: "bottom-right", x: 67.3077, y: 63.4615, size: 7.8, label: "TEMPORA" }
+    ];
+
+    const pieces = new Map();
+    const targetElements = new Map();
+    const IMAGE_WIDTH = 1376;
+    const IMAGE_HEIGHT = 768;
+    let solved = false;
+    let audioContext = null;
+    let gridVisible = false;
+    let resetTimeoutId = null;
+    let exitTimeoutId = null;
+    let countdownIntervalId = null;
+
+    function buildGrid() {
+      const fragment = document.createDocumentFragment();
+      const corner = document.createElement("div");
+      corner.className = "corner";
+      fragment.appendChild(corner);
+
+      letters.forEach((letter, index) => {
+        const col = document.createElement("div");
+        col.className = "col-label";
+        col.style.gridColumn = String(index + 2);
+        col.textContent = letter;
+        fragment.appendChild(col);
+      });
+
+      for (let row = 1; row <= 26; row += 1) {
+        const rowLabel = document.createElement("div");
+        rowLabel.className = "row-label";
+        rowLabel.style.gridRow = String(row + 1);
+        rowLabel.textContent = row;
+        fragment.appendChild(rowLabel);
+
+        letters.forEach((letter, index) => {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.style.gridColumn = String(index + 2);
+          cell.style.gridRow = String(row + 1);
+          cell.textContent = letter + row;
+          fragment.appendChild(cell);
+        });
+      }
+
+      gridLayer.replaceChildren(fragment);
+    }
+
+    function setGridState(isVisible) {
+      gridVisible = isVisible;
+      gridLayer.classList.toggle("is-visible", isVisible);
+      scene.classList.toggle("grid-on", isVisible);
+      gridToggle.setAttribute("aria-pressed", String(isVisible));
+      gridToggle.textContent = isVisible ? "Grid verbergen" : "Grid tonen";
+      gridStatus.textContent = isVisible ? "Grid staat aan" : "Grid staat uit";
+    }
+
+    function setFeedback(message, state = "") {
+      feedback.textContent = message;
+      feedback.classList.toggle("is-error", state === "error");
+      feedback.classList.toggle("is-success", state === "success");
+    }
+
+    function setMediaError(message = "") {
+      mediaError.textContent = message;
+      mediaError.classList.toggle("is-visible", Boolean(message));
+    }
+
+    function createTargets() {
+      targets.forEach((target) => {
+        const zone = document.createElement("div");
+        zone.className = "target-zone";
+        zone.dataset.targetId = target.id;
+        zone.dataset.label = target.label;
+        zone.dataset.locked = "false";
+        scene.appendChild(zone);
+        targetElements.set(target.id, zone);
+      });
+      positionTargets();
+    }
+
+    function createPieces() {
+      pieceConfigs.forEach((config) => {
+        const piece = document.createElement("div");
+        piece.className = "piece";
+        piece.dataset.pieceId = config.id;
+
+        const image = document.createElement("img");
+        image.src = config.src;
+        image.alt = "Cilinder " + config.label;
+        image.addEventListener("error", () => {
+          setMediaError("Een cilinderafbeelding ontbreekt in assets/images.");
+        });
+
+        const label = document.createElement("span");
+        label.className = "piece-label";
+        label.textContent = config.label;
+
+        piece.appendChild(image);
+        piece.appendChild(label);
+        piecesLayer.appendChild(piece);
+
+        const entry = {
+          config,
+          element: piece,
+          placed: false,
+          pointerId: null,
+          startX: 0,
+          startY: 0,
+          originLeft: 0,
+          originTop: 0
+        };
+
+        pieces.set(config.id, entry);
+        resetPiece(entry);
+        piece.addEventListener("pointerdown", (event) => startDrag(event, entry));
+      });
+    }
+
+    function getViewportRect() {
+      return {
+        left: 0,
+        top: 0,
+        width: window.innerWidth,
+        height: window.innerHeight
+      };
+    }
+
+    function getCoverRect() {
+      const viewport = getViewportRect();
+      const scale = Math.max(viewport.width / IMAGE_WIDTH, viewport.height / IMAGE_HEIGHT);
+      const width = IMAGE_WIDTH * scale;
+      const height = IMAGE_HEIGHT * scale;
+      return {
+        left: (viewport.width - width) / 2,
+        top: (viewport.height - height) / 2,
+        width,
+        height
+      };
+    }
+
+    function imagePercentToViewportPoint(xPercent, yPercent) {
+      const rect = getCoverRect();
+      return {
+        x: rect.left + (rect.width * xPercent) / 100,
+        y: rect.top + (rect.height * yPercent) / 100
+      };
+    }
+
+    function viewportToPercent(left, top) {
+      const rect = getViewportRect();
+      return {
+        x: (left / rect.width) * 100,
+        y: (top / rect.height) * 100
+      };
+    }
+
+    function positionPiece(entry, xPercent, yPercent) {
+      entry.element.style.left = xPercent + "%";
+      entry.element.style.top = yPercent + "%";
+    }
+
+    function positionTargets() {
+      const coverRect = getCoverRect();
+      targets.forEach((target) => {
+        const zone = targetElements.get(target.id);
+        if (!zone) {
+          return;
+        }
+        const point = imagePercentToViewportPoint(target.x, target.y);
+        zone.style.left = point.x + "px";
+        zone.style.top = point.y + "px";
+        zone.style.width = (coverRect.width * target.size) / 100 + "px";
+      });
+    }
+
+    function positionPieceAtImagePoint(entry, xPercent, yPercent) {
+      const point = imagePercentToViewportPoint(xPercent, yPercent);
+      const viewport = getViewportRect();
+      positionPiece(entry, (point.x / viewport.width) * 100, (point.y / viewport.height) * 100);
+    }
+
+    function syncLayoutToImage() {
+      const coverRect = getCoverRect();
+      positionTargets();
+      pieces.forEach((entry) => {
+        if (entry.placed) {
+          const target = targets.find((item) => item.id === entry.assignedTargetId);
+          if (target) {
+            entry.element.style.width = (coverRect.width * 8.2) / 100 + "px";
+            positionPieceAtImagePoint(entry, target.x, target.y);
+          }
+          return;
+        }
+
+        if (!entry.pointerId) {
+          positionPieceAtImagePoint(entry, entry.config.home.x, entry.config.home.y);
+        }
+      });
+    }
+
+    function startDrag(event, entry) {
+      if (solved) {
+        return;
+      }
+
+      event.preventDefault();
+      entry.pointerId = event.pointerId;
+      const pieceRect = entry.element.getBoundingClientRect();
+      if (entry.placed) {
+        releasePlacedPiece(entry);
+      }
+
+      entry.startX = event.clientX;
+      entry.startY = event.clientY;
+      entry.originLeft = pieceRect.left;
+      entry.originTop = pieceRect.top;
+
+      entry.element.classList.add("is-dragging");
+      entry.element.setPointerCapture(event.pointerId);
+      entry.element.addEventListener("pointermove", onPointerMove);
+      entry.element.addEventListener("pointerup", onPointerUp);
+      entry.element.addEventListener("pointercancel", onPointerUp);
+    }
+
+    function releasePlacedPiece(entry) {
+      const previousTarget = targetElements.get(entry.assignedTargetId);
+      if (previousTarget) {
+        previousTarget.classList.remove("is-locked");
+        previousTarget.dataset.locked = "false";
+      }
+
+      entry.placed = false;
+      entry.assignedTargetId = null;
+      entry.element.classList.remove("is-placed");
+      entry.element.style.width = "";
+      entry.element.style.transform = "";
+    }
+
+    function onPointerMove(event) {
+      const entry = pieces.get(event.currentTarget.dataset.pieceId);
+      if (!entry || entry.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - entry.startX;
+      const deltaY = event.clientY - entry.startY;
+      const left = entry.originLeft + deltaX;
+      const top = entry.originTop + deltaY;
+      const percent = viewportToPercent(left, top);
+      positionPiece(entry, percent.x, percent.y);
+      highlightHoveredTarget(entry);
+    }
+
+    function onPointerUp(event) {
+      const entry = pieces.get(event.currentTarget.dataset.pieceId);
+      if (!entry || entry.pointerId !== event.pointerId) {
+        return;
+      }
+
+      clearTargetHover();
+      entry.pointerId = null;
+      entry.element.classList.remove("is-dragging");
+      entry.element.releasePointerCapture(event.pointerId);
+      entry.element.removeEventListener("pointermove", onPointerMove);
+      entry.element.removeEventListener("pointerup", onPointerUp);
+      entry.element.removeEventListener("pointercancel", onPointerUp);
+
+      const hoveredTarget = getHoveredTarget(entry);
+      if (!hoveredTarget) {
+        return;
+      }
+
+      if (hoveredTarget.element.dataset.locked === "true") {
+        resetPiece(entry);
+        return;
+      }
+
+      placePiece(entry, hoveredTarget);
+      const remaining = getRemainingCount();
+      if (remaining === 0) {
+        evaluatePuzzle();
+        return;
+      }
+
+      setFeedback("Cilinder geplaatst. Nog " + remaining + " te gaan.");
+    }
+
+    function getHoveredTarget(entry) {
+      const pieceRect = entry.element.getBoundingClientRect();
+      const centerX = pieceRect.left + pieceRect.width / 2;
+      const centerY = pieceRect.top + pieceRect.height / 2;
+
+      for (const target of targets) {
+        const element = targetElements.get(target.id);
+        const rect = element.getBoundingClientRect();
+        const dx = centerX - (rect.left + rect.width / 2);
+        const dy = centerY - (rect.top + rect.height / 2);
+        const distance = Math.hypot(dx, dy);
+        if (distance <= rect.width * 0.48) {
+          return { ...target, element };
+        }
+      }
+
+      return null;
+    }
+
+    function highlightHoveredTarget(entry) {
+      clearTargetHover();
+      const hoveredTarget = getHoveredTarget(entry);
+      if (hoveredTarget) {
+        hoveredTarget.element.classList.add("is-hover");
+      }
+    }
+
+    function clearTargetHover() {
+      targetElements.forEach((element) => element.classList.remove("is-hover"));
+    }
+
+    function resetPiece(entry) {
+      entry.assignedTargetId = null;
+      entry.element.style.width = "";
+      entry.element.style.transform = "";
+      positionPieceAtImagePoint(entry, entry.config.home.x, entry.config.home.y);
+    }
+
+    function placePiece(entry, target) {
+      const coverRect = getCoverRect();
+      entry.placed = true;
+      entry.assignedTargetId = target.id;
+      entry.element.classList.add("is-placed");
+      entry.element.style.width = (coverRect.width * 8.2) / 100 + "px";
+      positionPieceAtImagePoint(entry, target.x, target.y);
+      entry.element.style.transform = "translate(-50%, -50%) scale(0.92)";
+      target.element.classList.add("is-locked");
+      target.element.dataset.locked = "true";
+    }
+
+    function evaluatePuzzle() {
+      let allCorrect = true;
+      pieces.forEach((entry) => {
+        if (entry.assignedTargetId !== entry.config.targetId) {
+          allCorrect = false;
+        }
+      });
+
+      if (allCorrect) {
+        setFeedback("Alle cilinders zitten vast. De steen reageert.", "success");
+        solvePuzzle();
+        return;
+      }
+
+      playFail();
+      setFeedback("Niet alle cilinders liggen goed. Probeer opnieuw.", "error");
+      resetTimeoutId = window.setTimeout(() => {
+        resetPuzzle();
+      }, 1400);
+    }
+
+    function getRemainingCount() {
+      let remaining = 0;
+      pieces.forEach((entry) => {
+        if (!entry.placed) {
+          remaining += 1;
+        }
+      });
+      return remaining;
+    }
+
+    function resetPuzzle() {
+      solved = false;
+      if (resetTimeoutId) {
+        window.clearTimeout(resetTimeoutId);
+        resetTimeoutId = null;
+      }
+      if (exitTimeoutId) {
+        window.clearTimeout(exitTimeoutId);
+        exitTimeoutId = null;
+      }
+      if (countdownIntervalId) {
+        window.clearInterval(countdownIntervalId);
+        countdownIntervalId = null;
+      }
+      document.body.classList.remove("is-exiting", "is-video-playing", "video-faded");
+      transitionVideo.classList.remove("is-visible");
+      transitionVideo.setAttribute("aria-hidden", "true");
+      transitionVideo.pause();
+      transitionVideo.currentTime = 0;
+      finalScreen.classList.remove("is-visible");
+      finalScreen.setAttribute("aria-hidden", "true");
+      finalCountdown.textContent = "Nog 5 seconden...";
+      pieces.forEach((entry) => {
+        entry.placed = false;
+        entry.element.classList.remove("is-placed", "is-dragging");
+        entry.assignedTargetId = null;
+        entry.element.style.width = "";
+        entry.element.style.transform = "";
+        resetPiece(entry);
+      });
+      targetElements.forEach((element) => {
+        element.classList.remove("is-locked", "is-hover");
+        element.dataset.locked = "false";
+      });
+      setFeedback("Sleep de vier cilinders naar de juiste gaten in de steen.");
+    }
+
+    function ensureAudioContext() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioContext = new AudioContextClass();
+        }
+      }
+      if (audioContext && audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+    }
+
+    function playTone(type) {
+      ensureAudioContext();
+      if (!audioContext) {
+        return;
+      }
+
+      const now = audioContext.currentTime;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      if (type === "success") {
+        oscillator.type = "triangle";
+        oscillator.frequency.setValueAtTime(392, now);
+        oscillator.frequency.linearRampToValueAtTime(523.25, now + 0.22);
+        oscillator.frequency.linearRampToValueAtTime(659.25, now + 0.5);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+        oscillator.start(now);
+        oscillator.stop(now + 0.92);
+        return;
+      }
+
+      oscillator.type = "sawtooth";
+      oscillator.frequency.setValueAtTime(220, now);
+      oscillator.frequency.linearRampToValueAtTime(165, now + 0.3);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+      oscillator.start(now);
+      oscillator.stop(now + 0.46);
+    }
+
+    function playSuccess() {
+      playTone("success");
+    }
+
+    function playFail() {
+      playTone("fail");
+    }
+
+    function solvePuzzle() {
+      solved = true;
+      playSuccess();
+      document.body.classList.add("is-exiting");
+      exitTimeoutId = window.setTimeout(() => {
+        document.body.classList.add("is-video-playing");
+        transitionVideo.classList.add("is-visible");
+        transitionVideo.setAttribute("aria-hidden", "false");
+        const playPromise = transitionVideo.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            window.location.href = "exit.html";
+          });
+        }
+        window.setTimeout(() => {
+          document.body.classList.add("video-faded");
+        }, 250);
+      }, 2000);
+    }
+
+    function goToExitPage() {
+      window.location.href = "exit.html";
+    }
+
+    function showFinalScreen() {
+      let remainingSeconds = 5;
+      transitionVideo.classList.remove("is-visible");
+      transitionVideo.setAttribute("aria-hidden", "true");
+      transitionVideo.pause();
+      finalScreen.classList.add("is-visible");
+      finalScreen.setAttribute("aria-hidden", "false");
+      finalCountdown.textContent = "Nog 5 seconden...";
+
+      countdownIntervalId = window.setInterval(() => {
+        remainingSeconds -= 1;
+        if (remainingSeconds <= 0) {
+          window.clearInterval(countdownIntervalId);
+          countdownIntervalId = null;
+          goToExitPage();
+          return;
+        }
+        finalCountdown.textContent = "Nog " + remainingSeconds + " seconden...";
+      }, 1000);
+    }
+
+    boardImage.addEventListener("error", () => {
+      setMediaError("De afbeelding eindpuzzel.png kon niet geladen worden.");
+    });
+
+    transitionVideo.addEventListener("ended", () => {
+      showFinalScreen();
+    });
+
+    transitionVideo.addEventListener("error", () => {
+      showFinalScreen();
+    });
+
+
+    gridToggle.addEventListener("click", () => {
+      setGridState(!gridVisible);
+    });
+
+    resetBtn.addEventListener("click", resetPuzzle);
+    scene.addEventListener("pointerdown", ensureAudioContext, { once: true });
+    window.addEventListener("resize", syncLayoutToImage);
+
+    buildGrid();
+    createTargets();
+    createPieces();
+    setGridState(false);
+    resetPuzzle();
+    syncLayoutToImage();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
