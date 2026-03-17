@@ -100,10 +100,146 @@ BIJZONDERHEDEN:
       color: #f7ead2;
       font-weight: 700;
     }
+
+    .credits-trigger {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 4;
+      border: 1px solid rgba(212, 179, 106, 0.55);
+      border-radius: 999px;
+      padding: 7px 14px;
+      background: rgba(11, 17, 26, 0.72);
+      color: #f7ead2;
+      font: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(6px);
+    }
+
+    .credits-trigger:hover,
+    .credits-trigger:focus-visible {
+      background: rgba(29, 40, 58, 0.88);
+      outline: none;
+    }
+
+    .credits-overlay[hidden] {
+      display: none;
+    }
+
+    .credits-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(5, 8, 14, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .credits-dialog {
+      width: min(760px, calc(100vw - 32px));
+      max-height: min(84vh, 860px);
+      overflow: auto;
+      padding: 24px 24px 18px;
+      border: 1px solid rgba(212, 179, 106, 0.42);
+      border-radius: 20px;
+      background: rgba(11, 17, 26, 0.92);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      text-align: left;
+    }
+
+    .credits-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .credits-title {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.4vw, 2rem);
+    }
+
+    .credits-close {
+      border: 1px solid rgba(212, 179, 106, 0.45);
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: transparent;
+      color: #f7ead2;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .credits-section {
+      margin-top: 18px;
+    }
+
+    .credits-section h2 {
+      margin: 0 0 8px;
+      font-size: 1.15rem;
+      color: #f3dba6;
+    }
+
+    .credits-list {
+      margin: 0;
+      padding-left: 20px;
+      color: #e6ddc8;
+    }
+
+    .credits-list li + li {
+      margin-top: 6px;
+    }
+
+    @media (max-width: 640px) {
+      .credits-dialog {
+        padding: 18px 18px 14px;
+      }
+    }
   </style>
 </head>
 <body>
   <canvas class="celebration-layer" id="celebrationLayer" aria-hidden="true"></canvas>
+  <button class="credits-trigger" id="creditsTrigger" type="button" aria-haspopup="dialog" aria-controls="creditsOverlay">
+    Credits
+  </button>
+  <div class="credits-overlay" id="creditsOverlay" hidden>
+    <section class="credits-dialog" role="dialog" aria-modal="true" aria-labelledby="creditsTitle">
+      <div class="credits-header">
+        <div>
+          <h1 class="credits-title" id="creditsTitle">Credits</h1>
+          <p>Team en technische details van deze escaperoom.</p>
+        </div>
+        <button class="credits-close" id="creditsClose" type="button" aria-label="Sluit credits">Sluiten</button>
+      </div>
+
+      <section class="credits-section" aria-labelledby="teamHeading">
+        <h2 id="teamHeading">Team</h2>
+        <ul class="credits-list">
+          <li>Vincent - concept, ontwikkeling en projectuitwerking</li>
+          <li>Bart - concept, ontwikkeling en projectuitwerking</li>
+          <li>Chofra - concept, ontwikkeling en projectuitwerking</li>
+          <li>Marjan - concept, ontwikkeling en projectuitwerking</li>
+        </ul>
+      </section>
+
+      <section class="credits-section" aria-labelledby="techHeading">
+        <h2 id="techHeading">Technische details</h2>
+        <ul class="credits-list">
+          <li>Gebouwd met HTML, CSS, JavaScript en AI tools</li>
+          <li>Structuur met losse HTML-pagina's en gedeelde scripts voor timer, progressie, audio en navigatie</li>
+          <li>Styling via <code>style.css</code> en aanvullende bestanden in <code>assets/style/</code></li>
+          <li>Media in <code>assets/images/</code> en <code>assets/sounds/</code></li>
+          <li>Browseropslag via <code>localStorage</code>, <code>sessionStorage</code> en <code>window.name</code></li>
+          <li>AI tools gebruikt: ChatGPT, Codex, Gemini en CapCut</li>
+        </ul>
+      </section>
+    </section>
+  </div>
   <main>
     <img class="reward-image" src="assets/images/magischebeloning.png" alt="Magische beloning" />
     <section class="content-panel">
@@ -114,6 +250,41 @@ BIJZONDERHEDEN:
     </section>
   </main>
   <script>
+    (function () {
+      const trigger = document.getElementById("creditsTrigger");
+      const overlay = document.getElementById("creditsOverlay");
+      const closeButton = document.getElementById("creditsClose");
+
+      if (!trigger || !overlay || !closeButton) {
+        return;
+      }
+
+      function openCredits() {
+        overlay.hidden = false;
+        document.body.style.overflow = "hidden";
+        closeButton.focus();
+      }
+
+      function closeCredits() {
+        overlay.hidden = true;
+        document.body.style.overflow = "";
+        trigger.focus();
+      }
+
+      trigger.addEventListener("click", openCredits);
+      closeButton.addEventListener("click", closeCredits);
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          closeCredits();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !overlay.hidden) {
+          closeCredits();
+        }
+      });
+    })();
+
     (function () {
       const STORAGE_KEY = "hp_escape_timer_v1";
       const FINISH_STORAGE_KEY = "hp_escape_finished_elapsed_ms_v1";
